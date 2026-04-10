@@ -40,26 +40,40 @@
    - Git差分の構文ハイライトツール (Linuxbrew経由)
    - より読みやすいgit diff表示
 
-9. **eza インストール**
+9. **GitHub CLI (gh) インストール**
+   - GitHubの公式コマンドラインツール (Linuxbrew経由)
+   - リポジトリ操作、issue管理、PR作成などをCLIから実行
+
+10. **GitHub Copilot CLI インストール**
+   - AI搭載のコマンドライン支援ツール (Linuxbrew経由)
+   - シェルコマンド、Git操作の提案、コマンドの説明
+
+11. **eza インストール**
    - lsコマンドの現代的な代替ツール (Linuxbrew経由)
    - アイコン表示、Git統合、ツリー表示
 
-10. **chezmoi インストール**
+12. **chezmoi インストール**
    - ドットファイル管理ツール chezmoi (Linuxbrew経由)
    - dotfilesの初期化・適用が簡単
 
-11. **Docker インストール**
+13. **xh インストール**
+   - HTTPクライアントツール (Linuxbrew経由)
+   - curlやhttpieの代替、Rust製で高速
 
-10. **Docker インストール**
+14. **tmux インストール**
+   - ターミナルマルチプレクサ (Linuxbrew経由)
+   - 複数のシェルセッションを管理、Powerline統合
+
+15. **Docker インストール**
    - Docker Engine の公式スクリプト経由インストール
    - ユーザーを docker グループに追加
    - Docker環境では自動スキップ
 
-11. **SSH設定**
+16. **SSH設定**
    - OpenSSH serverのインストールと設定
    - systemdサービスの有効化
 
-12. **環境固有の設定**
+17. **環境固有の設定**
    - WSL: /etc/wsl.conf の設定、systemd有効化
    - Azure VM: Azure CLI のインストール
    - EC2: AWS CLI v2 のインストール
@@ -175,6 +189,27 @@ ansible-playbook -i inventories/wsl/hosts playbooks/bootstrap.yml --tags starshi
 
 # batのみインストール
 ansible-playbook -i inventories/wsl/hosts playbooks/bootstrap.yml --tags bat
+
+# git-deltaのみインストール
+ansible-playbook -i inventories/wsl/hosts playbooks/bootstrap.yml --tags delta
+
+# GitHub CLIのみインストール
+ansible-playbook -i inventories/wsl/hosts playbooks/bootstrap.yml --tags gh
+
+# GitHub Copilot CLIのみインストール
+ansible-playbook -i inventories/wsl/hosts playbooks/bootstrap.yml --tags copilot_cli
+
+# ezaのみインストール
+ansible-playbook -i inventories/wsl/hosts playbooks/bootstrap.yml --tags eza
+
+# chezmoiのみインストール
+ansible-playbook -i inventories/wsl/hosts playbooks/bootstrap.yml --tags chezmoi
+
+# xhのみインストール
+ansible-playbook -i inventories/wsl/hosts playbooks/bootstrap.yml --tags xh
+
+# tmuxのみインストール
+ansible-playbook -i inventories/wsl/hosts playbooks/bootstrap.yml --tags tmux
 
 # Dockerのみインストール
 ansible-playbook -i inventories/wsl/hosts playbooks/bootstrap.yml --tags docker
