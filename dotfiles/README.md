@@ -23,6 +23,7 @@
 - `~/.tmux.conf` - tmux設定（キーバインド、プラグイン）
 - `~/.config/powerline/` - PowerLine設定（ステータスバー）
 - `~/.config/starship.toml` - starshipプロンプト設定
+- `~/.config/topgrade.toml` - topgrade設定（パッケージ一括更新）
 
 ## 🚀 セットアップ
 
@@ -108,8 +109,11 @@ dotfiles/
 ├── dot_zshrc.tmpl              # ~/.zshrc
 ├── dot_gitconfig.tmpl          # ~/.gitconfig
 ├── dot_tmux.conf               # ~/.tmux.conf
+├── dot_ssh/
+│   └── config.tmpl             # ~/.ssh/config
 └── dot_config/
     ├── starship.toml           # ~/.config/starship.toml
+    ├── topgrade.toml           # ~/.config/topgrade.toml
     └── powerline/              # ~/.config/powerline/
         ├── config.json
         ├── colors.json
@@ -170,6 +174,43 @@ chezmoi apply
     name = {{ .name }}
     email = {{ .email }}
 ```
+
+### 主要な設定ファイルの説明
+
+#### topgrade 設定 (`~/.config/topgrade.toml`)
+
+topgrade は様々なパッケージマネージャーを一括で更新するツールです。
+
+```bash
+# すべてのパッケージを更新
+topgrade
+
+# dry-run モード（実際には更新しない）
+topgrade --dry-run
+
+# 特定のステップのみ実行
+topgrade --only brew
+
+# 特定のステップをスキップ
+topgrade --disable system
+```
+
+設定ファイルで無効化・カスタマイズ可能：
+- Homebrew の自動クリーンアップ
+- システムパッケージの更新（WSL環境では無効化推奨）
+- Git リポジトリの一括 pull
+- カスタムコマンドの実行
+
+参考: [topgrade GitHub](https://github.com/topgrade-rs/topgrade)
+
+#### SSH 設定 (`~/.ssh/config`)
+
+SSH 接続設定を一元管理：
+- グローバル設定（接続維持、圧縮、タイムアウト）
+- ホスト別の設定（GitHub、開発サーバー、ジャンプホスト）
+- WSL 環境での特殊設定（Windows の SSH エージェント利用）
+
+設定例を参考にカスタマイズしてください。
 
 ## 🔒 セキュリティ
 
