@@ -57,6 +57,122 @@ set -Eeuo pipefail
 
 # ============================================================================
 # グローバル変数とデフォルト値
+
+# 証明書ディレクトリ
+CERTS_DIR="${SCRIPT_DIR}/certs"
+
+# =========================================================================
+# Zscalerルート証明書の自動インポート
+# =========================================================================
+
+update_zscaler_root_certificates() {
+    log_info "Zscalerルート証明書の更新を確認中..."
+
+    # 対象ファイルを検索（大文字小文字無視、拡張子pem/crt）
+    local cert_files
+    cert_files=( )
+    if [[ -d "$CERTS_DIR" ]]; then
+        while IFS= read -r -d '' f; do
+            cert_files+=("$f")
+        done < <(find "$CERTS_DIR" -type f \( -iname 'zscaler*root*.pem' -o -iname 'zscaler*root*.crt' \) -print0)
+    fi
+
+    if [[ ${#cert_files[@]} -eq 0 ]]; then
+        log_info "Zscalerルート証明書は見つかりませんでした"
+        return 0
+    fi
+
+    log_info "Zscalerルート証明書ファイル: ${cert_files[*]}"
+
+    # ディストリ検出
+    local distro pkg_mgr
+    distro=$(detect_linux_distro)
+    pkg_mgr=$(detect_package_manager "$distro")
+
+    for cert in "${cert_files[@]}"; do
+        local updated=0
+        case "$pkg_mgr" in
+            apt)
+                # Debian/Ubuntu 系
+                local dest="/usr/local/share/ca-certificates/$(basename "$cert")"
+                if [[ "$DRY_RUN" == "true" ]]; then
+                    echo "[dry-run] cp \"$cert\" \"$dest\""
+                    echo "[dry-run] update-ca-certificates"
+                else
+                    if [[ ! -f "$dest" ]] || ! cmp -s "$cert" "$dest"; then
+                        log_info "証明書をコピー: $cert → $dest"
+                        sudo cp "$cert" "$dest"
+                        sudo chmod 644 "$dest"
+                        sudo update-ca-certificates
+                        log_success "証明書ストアを更新しました (Debian/Ubuntu系)"
+                        updated=1
+                    else
+                        log_info "証明書は既に最新です: $dest"
+                    fi
+                fi
+                ;;
+            dnf|yum)
+                # RHEL/CentOS/Fedora 系
+                local dest="/etc/pki/ca-trust/source/anchors/$(basename "$cert")"
+                if [[ "$DRY_RUN" == "true" ]]; then
+                    echo "[dry-run] cp \"$cert\" \"$dest\""
+                    echo "[dry-run] update-ca-trust extract"
+                else
+                    if [[ ! -f "$dest" ]] || ! cmp -s "$cert" "$dest"; then
+                        log_info "証明書をコピー: $cert → $dest"
+                        sudo cp "$cert" "$dest"
+                        sudo chmod 644 "$dest"
+                        sudo update-ca-trust extract
+                        log_success "証明書ストアを更新しました (RHEL/Fedora系)"
+                        updated=1
+                    else
+                        log_info "証明書は既に最新です: $dest"
+                    fi
+                fi
+                ;;
+            pacman)
+                # Arch Linux 系
+                local dest="/etc/ca-certificates/trust-source/anchors/$(basename "$cert")"
+                if [[ "$DRY_RUN" == "true" ]]; then
+                    echo "[dry-run] cp \"$cert\" \"$dest\""
+                    echo "[dry-run] trust extract-compat"
+                else
+                    if [[ ! -f "$dest" ]] || ! cmp -s "$cert" "$dest"; then
+                        log_info "証明書をコピー: $cert → $dest"
+                        sudo cp "$cert" "$dest"
+                        sudo chmod 644 "$dest"
+                        sudo trust extract-compat
+                        log_success "証明書ストアを更新しました (Arch系)"
+                        updated=1
+                    else
+                        log_info "証明書は既に最新です: $dest"
+                    fi
+                fi
+                ;;
+            *)
+                log_warning "証明書ストアの自動更新は未対応のディストリビューションです: $distro"
+                ;;
+        esac
+        # 証明書ストア更新後に openssl s_client で接続テスト
+        if [[ "$updated" == "1" ]]; then
+            local test_host="www.google.com"
+            local test_port=443
+            log_info "証明書インストール後の接続テスト: openssl s_client -connect ${test_host}:${test_port}"
+            if [[ "$DRY_RUN" == "true" ]]; then
+                echo "[dry-run] openssl s_client -connect ${test_host}:${test_port} -CApath /etc/ssl/certs"
+            else
+                if ! openssl s_client -connect "${test_host}:${test_port}" -CApath /etc/ssl/certs < /dev/null | grep -q 'Verify return code: 0 (ok)'; then
+                    log_error "openssl s_client による接続テストに失敗しました (証明書ストアの反映を確認してください)"
+                    exit 1
+                else
+                    log_success "openssl s_client による接続テスト成功 (証明書ストアが有効です)"
+                fi
+            fi
+        fi
+    done
+
+    return 0
+}
 # ============================================================================
 
 readonly SCRIPT_NAME="$(basename "${BASH_SOURCE[0]}")"
@@ -544,12 +660,16 @@ install_via_pip() {
 # メインインストールフロー
 # ============================================================================
 
+
 main() {
     log_info "Ansibleブートストラップスクリプトを開始しました"
     log_debug "スクリプトディレクトリ: $SCRIPT_DIR"
     log_debug "Dry-runモード: $DRY_RUN"
     log_debug "Verboseモード: $VERBOSE"
     log_debug "仮想環境パス: $VENV_PATH"
+
+    # Zscalerルート証明書の自動インポート
+    update_zscaler_root_certificates
 
     # セキュリティチェック: rootでの実行を拒否
     check_not_root

@@ -15,6 +15,8 @@
 - **Dry-runモード**: 実際の変更前にプレビュー可能
 - **詳細ログ**: デバッグモードで詳細な実行ログを出力
 - **べき等性**: 繰り返し実行しても安全
+- **Zscalerルート証明書の自動インポート**: certs ディレクトリ内の zscaler*root*.pem/.crt を自動検出し、各ディストリビューションの証明書ストアへ反映
+- **openssl s_clientによる接続テスト**: 証明書インポート後、自動で接続テストを実施し、失敗時は即エラー終了
 
 ## 🚀 クイックスタート
 
@@ -23,11 +25,23 @@
 git clone <repository-url>
 cd dev-env-bootstrap
 
+# 必要に応じて certs ディレクトリに Zscalerルート証明書（zscaler*root*.pem/.crt）を配置
+
 # スクリプトを実行
 ./bootstrap.sh
 ```
 
 ## 📖 使用方法
+
+### Zscalerルート証明書の自動インポート
+
+`certs` ディレクトリ内に `zscaler*root*.pem` または `zscaler*root*.crt`（大文字小文字無視）を配置すると、スクリプト実行時に自動で各ディストリビューションの証明書ストアへインポートされます。
+
+証明書インポート後、自動的に `openssl s_client -connect www.google.com:443` で接続テストが行われ、失敗した場合はエラー終了します。
+
+**べき等性**: 既に同一内容の証明書がインストール済みの場合はスキップされます。
+
+**dry-run**: 実際のインポートやテストは行われず、予定コマンドのみ表示されます。
 
 ### 基本的な使用方法
 
@@ -162,6 +176,13 @@ ansible-playbook -i inventories/docker/hosts playbooks/containers.yml
 詳細は [ansible/README.md](ansible/README.md) を参照してください。
 
 ## 🔍 トラブルシューティング
+
+### Zscalerルート証明書のインポート・接続テストで失敗する
+
+- `certs` ディレクトリに配置した証明書ファイル名や内容を確認してください（例: `ZscalerRootCertificate.pem`）。
+- スクリプト実行時に `openssl s_client` の接続テストが失敗した場合、証明書ストアへの反映や証明書内容に問題がある可能性があります。
+- エラーメッセージを確認し、必要に応じて証明書を修正してください。
+- dry-runモードではテストは実行されません。
 
 ### Python バージョンが古い
 
