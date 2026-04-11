@@ -102,3 +102,7 @@ reports/
 .coverage
 htmlcov/
 .tox/
+
+
+#Ignore vscode AI rules
+.github\instructions\codacy.instructions.md
