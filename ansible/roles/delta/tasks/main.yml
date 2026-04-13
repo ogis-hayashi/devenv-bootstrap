@@ -21,6 +21,7 @@
   become: no
   environment:
     PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_facts.env.PATH }}"
+
 - name: delta のバージョンを確認
   ansible.builtin.command: /home/linuxbrew/.linuxbrew/bin/delta --version
   register: delta_version
@@ -29,6 +30,7 @@
   environment:
     PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_facts.env.PATH }}"
   become: no
+  
 - name: git-delta インストール完了メッセージ
   ansible.builtin.debug:
     msg: |

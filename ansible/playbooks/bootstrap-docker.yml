@@ -1,0 +1,80 @@
+---
+# ============================================================================
+# Docker ブートストラップ Playbook
+# ============================================================================
+#
+# 目的:
+#   Docker 環境専用の初期セットアップを実行します
+#
+# 使用方法:
+#   ansible-playbook -i inventories/docker/hosts playbooks/bootstrap-docker.yml
+#
+# Dry-run:
+#   ansible-playbook -i inventories/docker/hosts playbooks/bootstrap-docker.yml --check
+#
+# 必要要件:
+#   - Docker 環境（Docker Container）
+#   - inventories/docker/hosts が設定済み
+#
+# ============================================================================
+
+# 共通セットアップを実行
+- import_playbook: includes/common-setup.yml
+
+# Docker 固有のセットアップ
+- name: ブートストラップ - Docker固有の設定
+  hosts: docker
+  become: yes
+  gather_facts: yes
+
+  tasks:
+    - name: 環境タイプがDockerであることを確認
+      ansible.builtin.fail:
+        msg: "このplaybookはDocker環境専用です。environment_type='docker'が必要です。"
+      when: environment_type != 'docker'
+
+    - name: Docker固有セットアップ開始メッセージ
+      ansible.builtin.debug:
+        msg: |
+          ================================================
+          Docker固有のセットアップを開始します
+          ================================================
+          環境: {{ environment_type }}
+          ホスト: {{ ansible_facts.hostname }}
+          ================================================
+
+    - name: Docker ロールを適用
+      ansible.builtin.include_role:
+        name: docker
+      tags:
+        - docker
+
+# セットアップ完了メッセージ
+- name: Docker ブートストラップ完了
+  hosts: docker
+  gather_facts: no
+
+  tasks:
+    - name: Docker セットアップ完了メッセージ
+      ansible.builtin.debug:
+        msg: |
+          ================================================
+          Docker ブートストラップが完了しました！
+          ================================================
+
+          次のステップ:
+          1. シェルを再起動するか、以下を実行してLinuxbrewを有効化:
+             eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+
+             ※ chezmoi により ~/.bashrc と ~/.zshrc には既に
+                Linuxbrew の初期化コードが書き込まれています。
+                次回ログイン時から自動的に有効化されます。
+
+          2. Linuxbrew の動作確認:
+             brew --version
+
+          3. コンテナ環境の確認:
+             # Docker環境固有の設定確認
+             cat /proc/1/cgroup
+
+          ================================================

@@ -40,7 +40,7 @@ set -Eeuo pipefail
 update_certificates_platform() {
     # Zscaler証明書をシステム証明書ストアに追加・更新 (RHEL/Fedora系)
     # 引数: $1 = 証明書ファイルパス
-    
+
     local cert_file="$1"
     local dest="/etc/pki/ca-trust/source/anchors/$(basename "$cert_file")"
     local need_update=0
@@ -89,7 +89,7 @@ update_certificates_platform() {
 get_package_manager_platform() {
     # 利用可能なパッケージマネージャー（dnf または yum）を取得
     # 戻り値: "dnf" または "yum"
-    
+
     if command -v dnf >/dev/null 2>&1; then
         echo "dnf"
     elif command -v yum >/dev/null 2>&1; then
@@ -107,7 +107,7 @@ get_package_manager_platform() {
 get_system_packages_platform() {
     # RHEL/Fedora系で必要なシステムパッケージのリストを取得
     # 戻り値: パッケージ名の配列(標準出力)
-    
+
     echo "python3"
     echo "python3-pip"
     echo "python3-virtualenv"
@@ -120,11 +120,11 @@ check_package_installed_platform() {
     # 指定されたパッケージがインストール済みかチェック (RHEL/Fedora系)
     # 引数: $1 = パッケージ名
     # 戻り値: インストール済みなら0、未インストールなら1
-    
+
     local package="$1"
-    
+
     log_debug "パッケージの存在確認 (rpm): $package"
-    
+
     if rpm -q "$package" >/dev/null 2>&1; then
         log_debug "パッケージはインストール済み: $package"
         return 0
@@ -137,15 +137,15 @@ check_package_installed_platform() {
 get_missing_packages_platform() {
     # インストールされていないシステムパッケージのリストを取得
     # 戻り値: 未インストールパッケージ名の配列(標準出力)
-    
+
     local -a missing_packages=()
-    
+
     while IFS= read -r package; do
         if ! check_package_installed_platform "$package"; then
             missing_packages+=("$package")
         fi
     done < <(get_system_packages_platform)
-    
+
     # 配列の各要素を出力
     printf '%s\n' "${missing_packages[@]}"
 }
@@ -153,7 +153,7 @@ get_missing_packages_platform() {
 install_system_packages_platform() {
     # Ansible用のシステムレベル依存関係をインストール (RHEL/Fedora系)
     # dnf または yum パッケージマネージャーを使用
-    
+
     log_info "システム依存関係をインストール中 (RHEL/Fedora系)..."
 
     # パッケージマネージャーを決定
@@ -207,13 +207,13 @@ install_system_packages_platform() {
 
 setup_platform_environment() {
     # RHEL/Fedora系プラットフォーム固有の環境セットアップ
-    
+
     log_info "RHEL/Fedora系プラットフォーム環境をセットアップ中..."
-    
+
     # パッケージマネージャーの確認
     local pkg_mgr
     pkg_mgr=$(get_package_manager_platform)
-    
+
     log_debug "$pkg_mgr バージョン: $("$pkg_mgr" --version 2>/dev/null | head -n1 || echo 'unknown')"
     log_success "RHEL/Fedora系プラットフォーム環境の確認完了 (パッケージマネージャー: $pkg_mgr)"
     return 0
@@ -221,10 +221,10 @@ setup_platform_environment() {
 
 get_platform_info() {
     # プラットフォーム情報を表示
-    
+
     local pkg_mgr
     pkg_mgr=$(get_package_manager_platform)
-    
+
     cat <<EOF
 プラットフォーム: RHEL/Fedora系 ($pkg_mgr)
 パッケージマネージャー: $pkg_mgr
@@ -241,7 +241,7 @@ EOF
 test_certificate_connectivity() {
     # 証明書インストール後の接続テストを実行
     # 引数: なし (デフォルトで www.google.com:443 をテスト)
-    
+
     local test_host="${1:-www.google.com}"
     local test_port="${2:-443}"
 
@@ -268,9 +268,9 @@ test_certificate_connectivity() {
 enable_epel_repository() {
     # EPEL (Extra Packages for Enterprise Linux) リポジトリを有効化
     # CentOS/RHEL環境で一部のパッケージに必要
-    
+
     log_info "EPEL リポジトリの状態をチェック中..."
-    
+
     local pkg_mgr
     pkg_mgr=$(get_package_manager_platform)
 

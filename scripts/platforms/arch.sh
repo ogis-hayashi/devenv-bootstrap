@@ -37,7 +37,7 @@ set -Eeuo pipefail
 update_certificates_platform() {
     # Zscaler証明書をシステム証明書ストアに追加・更新 (Arch Linux系)
     # 引数: $1 = 証明書ファイルパス
-    
+
     local cert_file="$1"
     local dest="/etc/ca-certificates/trust-source/anchors/$(basename "$cert_file")"
     local need_update=0
@@ -54,7 +54,7 @@ update_certificates_platform() {
     # 証明書ファイルをシステム cert ディレクトリにコピー
     if [[ ! -f "$dest" ]] || ! cmp -s "$cert_file" "$dest"; then
         log_debug "証明書ファイルをコピー中: $cert_file -> $dest"
-        
+
         # ディレクトリが存在しない場合は作成
         sudo mkdir -p "$(dirname "$dest")"
         sudo cp "$cert_file" "$dest"
@@ -89,7 +89,7 @@ update_certificates_platform() {
 get_system_packages_platform() {
     # Arch Linux系で必要なシステムパッケージのリストを取得
     # 戻り値: パッケージ名の配列(標準出力)
-    
+
     echo "python"
     echo "python-pip"
     echo "base-devel"
@@ -101,11 +101,11 @@ check_package_installed_platform() {
     # 指定されたパッケージがインストール済みかチェック (Arch Linux系)
     # 引数: $1 = パッケージ名
     # 戻り値: インストール済みなら0、未インストールなら1
-    
+
     local package="$1"
-    
+
     log_debug "パッケージの存在確認 (pacman): $package"
-    
+
     if pacman -Q "$package" >/dev/null 2>&1; then
         log_debug "パッケージはインストール済み: $package"
         return 0
@@ -118,15 +118,15 @@ check_package_installed_platform() {
 get_missing_packages_platform() {
     # インストールされていないシステムパッケージのリストを取得
     # 戻り値: 未インストールパッケージ名の配列(標準出力)
-    
+
     local -a missing_packages=()
-    
+
     while IFS= read -r package; do
         if ! check_package_installed_platform "$package"; then
             missing_packages+=("$package")
         fi
     done < <(get_system_packages_platform)
-    
+
     # 配列の各要素を出力
     printf '%s\n' "${missing_packages[@]}"
 }
@@ -134,7 +134,7 @@ get_missing_packages_platform() {
 install_system_packages_platform() {
     # Ansible用のシステムレベル依存関係をインストール (Arch Linux系)
     # pacman パッケージマネージャーを使用
-    
+
     log_info "システム依存関係をインストール中 (Arch Linux系)..."
 
     # 必要なパッケージリストを取得
@@ -183,17 +183,17 @@ install_system_packages_platform() {
 
 setup_platform_environment() {
     # Arch Linux系プラットフォーム固有の環境セットアップ
-    
+
     log_info "Arch Linux系プラットフォーム環境をセットアップ中..."
-    
+
     # 基本的な環境確認
     if ! command -v pacman >/dev/null 2>&1; then
         log_error "pacman コマンドが見つかりません。Arch Linux系環境でないか、pacmanが正しくインストールされていません。"
         return 1
     fi
-    
+
     log_debug "pacman バージョン: $(pacman --version 2>/dev/null | head -n1 || echo 'unknown')"
-    
+
     # AUR ヘルパーの存在確認（オプショナル）
     if command -v yay >/dev/null 2>&1; then
         log_debug "AUR ヘルパー: yay が利用可能"
@@ -202,14 +202,14 @@ setup_platform_environment() {
     else
         log_debug "AUR ヘルパーは見つかりませんでした（オプショナル）"
     fi
-    
+
     log_success "Arch Linux系プラットフォーム環境の確認完了"
     return 0
 }
 
 get_platform_info() {
     # プラットフォーム情報を表示
-    
+
     cat <<EOF
 プラットフォーム: Arch Linux系 (pacman)
 パッケージマネージャー: pacman
@@ -226,7 +226,7 @@ EOF
 test_certificate_connectivity() {
     # 証明書インストール後の接続テストを実行
     # 引数: なし (デフォルトで www.google.com:443 をテスト)
-    
+
     local test_host="${1:-www.google.com}"
     local test_port="${2:-443}"
 
@@ -253,16 +253,16 @@ test_certificate_connectivity() {
 check_aur_helper() {
     # AUR (Arch User Repository) ヘルパーの存在確認
     # 戻り値: 利用可能なヘルパー名 または 空文字列
-    
+
     local aur_helpers=("yay" "pamac" "trizen" "yaourt")
-    
+
     for helper in "${aur_helpers[@]}"; do
         if command -v "$helper" >/dev/null 2>&1; then
             echo "$helper"
             return 0
         fi
     done
-    
+
     echo ""
     return 1
 }
@@ -271,24 +271,24 @@ install_aur_package() {
     # AUR パッケージをインストール（ヘルパーが利用可能な場合）
     # 引数: $1 = パッケージ名
     # 戻り値: 成功なら0、失敗なら1
-    
+
     local package="$1"
     local aur_helper
-    
+
     aur_helper=$(check_aur_helper)
-    
+
     if [[ -z "$aur_helper" ]]; then
         log_warning "AUR ヘルパーが見つからないため、AUR パッケージのインストールをスキップします: $package"
         return 1
     fi
-    
+
     log_info "AUR パッケージをインストール中: $package (ヘルパー: $aur_helper)"
-    
+
     if [[ "$DRY_RUN" == "true" ]]; then
         echo "[dry-run] $aur_helper -S $package"
         return 0
     fi
-    
+
     if "$aur_helper" -S --noconfirm "$package"; then
         log_success "AUR パッケージのインストールが完了しました: $package"
         return 0
@@ -304,14 +304,14 @@ install_aur_package() {
 
 update_package_database() {
     # pacman パッケージデータベースを更新
-    
+
     log_info "パッケージデータベースを更新中..."
-    
+
     if [[ "$DRY_RUN" == "true" ]]; then
         echo "[dry-run] sudo pacman -Sy"
         return 0
     fi
-    
+
     if sudo pacman -Sy --noconfirm; then
         log_success "パッケージデータベースの更新が完了しました"
         return 0
@@ -323,14 +323,14 @@ update_package_database() {
 
 upgrade_system_packages() {
     # システム全体のパッケージをアップグレード（オプショナル）
-    
+
     log_info "システムパッケージのアップグレードを確認中..."
-    
+
     if [[ "$DRY_RUN" == "true" ]]; then
         echo "[dry-run] sudo pacman -Su"
         return 0
     fi
-    
+
     # 利用可能なアップグレードがあるかチェック
     if pacman -Qu | grep -q .; then
         log_info "利用可能なパッケージアップグレードがあります"
@@ -339,7 +339,7 @@ upgrade_system_packages() {
     else
         log_info "すべてのパッケージは最新です"
     fi
-    
+
     return 0
 }
 

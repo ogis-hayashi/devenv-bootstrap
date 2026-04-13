@@ -20,7 +20,7 @@
 # 必要変数 (読み込み前に設定):
 #   SCRIPT_NAME - スクリプト名
 #   DRY_RUN     - true/false
-#   VERBOSE     - true/false  
+#   VERBOSE     - true/false
 #   VENV_PATH   - Ansible仮想環境パス
 #   MIN_PYTHON_VERSION - 最小Pythonバージョン
 #   ANSIBLE_PACKAGE - Ansibleパッケージ名
@@ -415,13 +415,13 @@ is_ansible_installed() {
 
 check_environment() {
     # 実行環境の基本チェックを実行
-    
+
     log_info "実行環境をチェック中..."
-    
+
     check_not_root
     check_python_version
     check_dependencies
-    
+
     log_success "実行環境チェック完了"
 }
 
@@ -431,7 +431,7 @@ check_environment() {
 
 parse_arguments() {
     # 引数解析 (グローバル変数を設定)
-    
+
     while [[ $# -gt 0 ]]; do
         case "$1" in
             -d|--dry-run)

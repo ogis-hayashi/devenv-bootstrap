@@ -1,0 +1,209 @@
+---
+# ============================================================================
+# 共通セットアップ Playbook
+# ============================================================================
+#
+# 目的:
+#   全環境共通の初期セットアップを実行します
+#
+# 使用方法:
+#   このファイルは各環境専用playbookから import_playbook で呼び出されます
+#   直接実行することは推奨しません
+#
+# ============================================================================
+
+- name: 共通セットアップ - 全環境共通
+  hosts: all
+  become: yes
+  gather_facts: yes
+
+  tasks:
+    # facts 収集後に環境依存の変数を設定
+    # become: no で実行ユーザーのホームディレクトリを取得
+    - name: Zscaler証明書パスを設定
+      ansible.builtin.set_fact:
+        zscaler_cert_path: "{{ lookup('env', 'HOME') }}/.certs/ZscalerRootCA.cer"
+        zscaler_ca_bundle_path: "{{ lookup('env', 'HOME') }}/.certs/ca-bundle.pem"
+      become: no
+      when: zscaler_cert_path is not defined or zscaler_ca_bundle_path is not defined
+
+    - name: セットアップ開始メッセージ
+      ansible.builtin.debug:
+        msg: |
+          ================================================
+          共通セットアップを開始します
+          ================================================
+          ホスト: {{ ansible_facts.hostname }}
+          環境タイプ: {{ environment_type | default('unknown') }}
+          ディストリビューション: {{ ansible_facts.distribution }} {{ ansible_facts.distribution_version }}
+          ================================================
+
+    - name: Zscalerルート証明書の存在確認
+      ansible.builtin.stat:
+        path: "{{ zscaler_cert_path }}"
+      register: zscaler_cert_stat
+      become: no
+      tags:
+        - zscaler
+        - certificates
+
+    - name: Zscaler有効フラグを設定
+      ansible.builtin.set_fact:
+        zscaler_enabled: "{{ zscaler_cert_stat.stat.exists | bool }}"
+      tags:
+        - zscaler
+        - certificates
+
+    - name: Zscaler証明書の状態を表示
+      ansible.builtin.debug:
+        msg: |
+          Zscaler証明書: {{ 'あり' if zscaler_enabled else 'なし' }}
+          証明書パス: {{ zscaler_cert_path }}
+          ※ 証明書のインストールはbootstrap.shで既に実施済みです
+      tags:
+        - zscaler
+        - certificates
+
+    - name: sudo 設定を適用
+      ansible.builtin.include_role:
+        name: sudo
+      tags:
+        - sudo
+        - security
+
+    - name: 共通パッケージとLinuxbrewをインストール
+      ansible.builtin.include_role:
+        name: common
+      tags:
+        - common
+        - packages
+
+    - name: chezmoi をインストール
+      ansible.builtin.include_role:
+        name: chezmoi
+      tags:
+        - chezmoi
+        - dotfiles
+        - tools
+
+    - name: topgrade をインストール
+      ansible.builtin.include_role:
+        name: topgrade
+      tags:
+        - topgrade
+
+    - name: uv をインストール
+      ansible.builtin.include_role:
+        name: uv
+      tags:
+        - uv
+        - python
+
+    - name: Node.js をインストール
+      ansible.builtin.include_role:
+        name: node
+      tags:
+        - node
+        - nodejs
+        - npm
+
+    - name: starship をインストール
+      ansible.builtin.include_role:
+        name: starship
+      tags:
+        - starship
+        - shell
+
+    - name: bat をインストール
+      ansible.builtin.include_role:
+        name: bat
+      tags:
+        - bat
+        - tools
+
+    - name: git-delta をインストール
+      ansible.builtin.include_role:
+        name: delta
+      tags:
+        - delta
+        - git
+        - tools
+
+    - name: GitHub CLI (gh) をインストール
+      ansible.builtin.include_role:
+        name: gh
+      tags:
+        - gh
+        - git
+        - github
+        - tools
+
+    - name: GitHub Copilot CLI をインストール
+      ansible.builtin.include_role:
+        name: copilot_cli
+      tags:
+        - copilot_cli
+        - copilot
+        - github
+        - ai
+        - tools
+
+    - name: Databricks CLI をインストール
+      ansible.builtin.include_role:
+        name: databricks_cli
+      tags:
+        - databricks_cli
+        - databricks
+        - data
+        - tools
+
+    - name: eza をインストール
+      ansible.builtin.include_role:
+        name: eza
+      tags:
+        - eza
+        - tools
+
+    - name: xh をインストール
+      ansible.builtin.include_role:
+        name: xh
+      tags:
+        - xh
+        - tools
+        - http
+
+    - name: tmux をインストール
+      ansible.builtin.include_role:
+        name: tmux
+      tags:
+        - tmux
+        - tools
+
+    - name: Docker をインストール
+      ansible.builtin.include_role:
+        name: docker_install
+      tags:
+        - docker
+        - docker_install
+
+    - name: SSH 設定を適用
+      ansible.builtin.include_role:
+        name: ssh
+      tags:
+        - ssh
+        - security
+
+- name: 共通セットアップ完了
+  hosts: all
+  gather_facts: no
+
+  tasks:
+    - name: 共通セットアップ完了メッセージ
+      ansible.builtin.debug:
+        msg: |
+          ================================================
+          共通セットアップが完了しました
+          ================================================
+          環境: {{ environment_type | default('unknown') }}
+          次に環境固有のセットアップを実行します...
+          ================================================
