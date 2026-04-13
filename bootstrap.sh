@@ -86,23 +86,70 @@ update_zscaler_root_certificates() {
     pkg_mgr=$(detect_package_manager "$distro")
 
     local updated=0
+    local needs_update=0
     case "$pkg_mgr" in
         apt)
             # Debian/Ubuntu 系
-            local dest="/usr/local/share/ca-certificates/$(basename "$CERT_FILE")"
+            # Ubuntu の update-ca-certificates は .crt 拡張子を期待するため、変換してコピー
+            local cert_basename
+            cert_basename="$(basename "$CERT_FILE" .cer).crt"
+            local dest="/usr/local/share/ca-certificates/$cert_basename"
+            
             if [[ "$DRY_RUN" == "true" ]]; then
                 echo "[dry-run] cp \"$CERT_FILE\" \"$dest\""
-                echo "[dry-run] update-ca-certificates"
+                echo "[dry-run] update-ca-certificates --fresh"
             else
-                if [[ ! -f "$dest" ]] || ! cmp -s "$CERT_FILE" "$dest"; then
-                    log_info "証明書をコピー: $CERT_FILE → $dest"
-                    sudo cp "$CERT_FILE" "$dest"
-                    sudo chmod 644 "$dest"
-                    sudo update-ca-certificates
+                # 証明書形式を検証（PEM形式であることを確認）
+                log_debug "証明書ファイルの形式を検証中: $CERT_FILE"
+                if ! openssl x509 -in "$CERT_FILE" -noout 2>/dev/null; then
+                    log_warning "証明書がPEM形式でない可能性があります。DER形式からPEMに変換を試みます..."
+                    # DER形式からPEM形式に変換を試行
+                    if openssl x509 -inform DER -in "$CERT_FILE" -out /tmp/zscaler-temp.pem 2>/dev/null; then
+                        log_info "DER形式からPEM形式に変換しました"
+                        sudo cp /tmp/zscaler-temp.pem "$dest"
+                        rm -f /tmp/zscaler-temp.pem
+                        needs_update=1
+                    else
+                        log_error "証明書ファイルの形式が不正です: $CERT_FILE"
+                        log_error "PEM形式でもDER形式でもありません"
+                        return 1
+                    fi
+                else
+                    # PEM形式の証明書を .crt 拡張子でコピー
+                    if [[ ! -f "$dest" ]] || ! cmp -s "$CERT_FILE" "$dest"; then
+                        log_info "証明書をコピー: $CERT_FILE → $dest"
+                        sudo cp "$CERT_FILE" "$dest"
+                        sudo chmod 644 "$dest"
+                        needs_update=1
+                    else
+                        log_debug "証明書ファイルは既に最新です: $dest"
+                    fi
+                fi
+                
+                # 証明書バンドルに含まれているか検証
+                if ! grep -q "Zscaler" /etc/ssl/certs/ca-certificates.crt 2>/dev/null; then
+                    log_warning "証明書バンドルにZscaler証明書が含まれていません。更新します..."
+                    needs_update=1
+                fi
+                
+                # 必要に応じて証明書ストアを更新
+                if [[ "$needs_update" == "1" ]]; then
+                    log_info "証明書ストアを更新中..."
+                    sudo update-ca-certificates --fresh
                     log_success "証明書ストアを更新しました (Debian/Ubuntu系)"
                     updated=1
+                    
+                    # 更新後に再度検証
+                    if grep -q "Zscaler" /etc/ssl/certs/ca-certificates.crt 2>/dev/null; then
+                        log_success "証明書バンドルにZscaler証明書が含まれていることを確認しました"
+                    else
+                        log_error "証明書ストア更新後もZscaler証明書がバンドルに含まれていません"
+                        log_error "証明書ファイルを確認してください:"
+                        log_error "  openssl x509 -in \"$dest\" -text -noout"
+                        log_error "  ls -la /usr/local/share/ca-certificates/"
+                    fi
                 else
-                    log_info "証明書は既に最新です: $dest"
+                    log_info "証明書バンドルは既に最新です"
                 fi
             fi
             ;;
@@ -113,15 +160,30 @@ update_zscaler_root_certificates() {
                 echo "[dry-run] cp \"$CERT_FILE\" \"$dest\""
                 echo "[dry-run] update-ca-trust extract"
             else
+                # 証明書ファイルをコピー（必要な場合）
                 if [[ ! -f "$dest" ]] || ! cmp -s "$CERT_FILE" "$dest"; then
                     log_info "証明書をコピー: $CERT_FILE → $dest"
                     sudo cp "$CERT_FILE" "$dest"
                     sudo chmod 644 "$dest"
+                    needs_update=1
+                else
+                    log_debug "証明書ファイルは既に最新です: $dest"
+                fi
+                
+                # 証明書バンドルに含まれているか検証
+                if ! grep -q "Zscaler" /etc/pki/tls/certs/ca-bundle.crt 2>/dev/null; then
+                    log_warning "証明書バンドルにZscaler証明書が含まれていません。更新します..."
+                    needs_update=1
+                fi
+                
+                # 必要に応じて証明書ストアを更新
+                if [[ "$needs_update" == "1" ]]; then
+                    log_info "証明書ストアを更新中..."
                     sudo update-ca-trust extract
                     log_success "証明書ストアを更新しました (RHEL/Fedora系)"
                     updated=1
                 else
-                    log_info "証明書は既に最新です: $dest"
+                    log_info "証明書バンドルは既に最新です"
                 fi
             fi
             ;;
@@ -132,15 +194,30 @@ update_zscaler_root_certificates() {
                 echo "[dry-run] cp \"$CERT_FILE\" \"$dest\""
                 echo "[dry-run] trust extract-compat"
             else
+                # 証明書ファイルをコピー（必要な場合）
                 if [[ ! -f "$dest" ]] || ! cmp -s "$CERT_FILE" "$dest"; then
                     log_info "証明書をコピー: $CERT_FILE → $dest"
                     sudo cp "$CERT_FILE" "$dest"
                     sudo chmod 644 "$dest"
+                    needs_update=1
+                else
+                    log_debug "証明書ファイルは既に最新です: $dest"
+                fi
+                
+                # 証明書バンドルに含まれているか検証
+                if ! grep -q "Zscaler" /etc/ssl/certs/ca-certificates.crt 2>/dev/null; then
+                    log_warning "証明書バンドルにZscaler証明書が含まれていません。更新します..."
+                    needs_update=1
+                fi
+                
+                # 必要に応じて証明書ストアを更新
+                if [[ "$needs_update" == "1" ]]; then
+                    log_info "証明書ストアを更新中..."
                     sudo trust extract-compat
                     log_success "証明書ストアを更新しました (Arch系)"
                     updated=1
                 else
-                    log_info "証明書は既に最新です: $dest"
+                    log_info "証明書バンドルは既に最新です"
                 fi
             fi
             ;;
@@ -366,6 +443,48 @@ detect_package_manager() {
     esac
 
     echo "$pkg_mgr"
+}
+
+# ============================================================================
+# 証明書バンドル取得
+# ============================================================================
+
+get_system_ca_bundle() {
+    # システムの証明書バンドルパスを取得
+    # 戻り値: 証明書バンドルファイルパス (存在しない場合は空文字列)
+
+    log_debug "システム証明書バンドルパスを検出中..."
+
+    local distro="$1"
+    local ca_bundle=""
+
+    case "$distro" in
+        ubuntu|debian|linuxmint|pop)
+            ca_bundle="/etc/ssl/certs/ca-certificates.crt"
+            ;;
+        fedora|rhel|centos|rocky|almalinux)
+            ca_bundle="/etc/pki/tls/certs/ca-bundle.crt"
+            ;;
+        arch|manjaro|endeavouros)
+            ca_bundle="/etc/ssl/certs/ca-certificates.crt"
+            ;;
+        *)
+            # フォールバック: 一般的なパスを試す
+            if [[ -f "/etc/ssl/certs/ca-certificates.crt" ]]; then
+                ca_bundle="/etc/ssl/certs/ca-certificates.crt"
+            elif [[ -f "/etc/pki/tls/certs/ca-bundle.crt" ]]; then
+                ca_bundle="/etc/pki/tls/certs/ca-bundle.crt"
+            fi
+            ;;
+    esac
+
+    if [[ -n "$ca_bundle" && -f "$ca_bundle" ]]; then
+        log_debug "検出された証明書バンドル: $ca_bundle"
+        echo "$ca_bundle"
+    else
+        log_debug "システム証明書バンドルが見つかりません"
+        echo ""
+    fi
 }
 
 # ============================================================================
@@ -619,27 +738,139 @@ install_via_pip() {
         log_info "仮想環境は既に存在します: $VENV_PATH"
     fi
 
+    # システム証明書バンドルパスを取得
+    local distro ca_bundle
+    distro=$(detect_linux_distro)
+    ca_bundle=$(get_system_ca_bundle "$distro")
+
+    # pip設定に証明書パスを永続化
+    if [[ -n "$ca_bundle" ]]; then
+        log_info "pip設定に証明書バンドルを設定中: $ca_bundle"
+        
+        if [[ "$DRY_RUN" == "true" ]]; then
+            echo "[dry-run] 実行予定: \"$VENV_PATH/bin/pip\" config set global.cert \"$ca_bundle\""
+        else
+            # べき等性のため、既存設定をチェック
+            local current_cert
+            current_cert=$("$VENV_PATH/bin/pip" config get global.cert 2>/dev/null || echo "")
+            
+            if [[ "$current_cert" != "$ca_bundle" ]]; then
+                "$VENV_PATH/bin/pip" config set global.cert "$ca_bundle" || {
+                    log_warning "pip設定の更新に失敗しました (続行します)"
+                }
+                log_success "pip設定に証明書バンドルを設定しました"
+            else
+                log_debug "pip証明書設定は既に正しく設定されています"
+            fi
+        fi
+    else
+        log_warning "システム証明書バンドルが見つかりません。デフォルト設定を使用します"
+    fi
+
+    # pip実行用の環境変数を設定 (requests ライブラリ用)
+    local -a pip_env=()
+    local -a pip_cert_args=()
+    if [[ -n "$ca_bundle" ]]; then
+        log_debug "pip実行時に環境変数を設定: REQUESTS_CA_BUNDLE=$ca_bundle"
+        pip_env=("REQUESTS_CA_BUNDLE=$ca_bundle" "CURL_CA_BUNDLE=$ca_bundle" "SSL_CERT_FILE=$ca_bundle")
+        pip_cert_args=("--cert" "$ca_bundle")
+        
+        # 証明書バンドルの内容を検証
+        if [[ "$VERBOSE" == "true" ]]; then
+            log_debug "証明書バンドルの検証..."
+            if grep -q "Zscaler" "$ca_bundle" 2>/dev/null; then
+                log_debug "✅ 証明書バンドルにZscaler証明書が含まれています"
+            else
+                log_warning "⚠️  証明書バンドルにZscaler証明書が見つかりません"
+                log_warning "PyPIへの接続に失敗する可能性があります"
+            fi
+            
+            # 証明書バンドルのサイズと最終更新日時を表示
+            if [[ -f "$ca_bundle" ]]; then
+                local bundle_size bundle_date
+                bundle_size=$(stat -c%s "$ca_bundle" 2>/dev/null || stat -f%z "$ca_bundle" 2>/dev/null || echo "unknown")
+                bundle_date=$(stat -c%y "$ca_bundle" 2>/dev/null | cut -d' ' -f1 || echo "unknown")
+                log_debug "証明書バンドル情報: サイズ=${bundle_size} bytes, 更新日=${bundle_date}"
+            fi
+        fi
+    fi
+
+    # 仮想環境のpipパスを検証
+    if [[ ! -f "$VENV_PATH/bin/pip" ]]; then
+        log_error "仮想環境のpipが見つかりません: $VENV_PATH/bin/pip"
+        log_error "仮想環境が正しく作成されていない可能性があります"
+        exit 1
+    fi
+    log_debug "使用するpipパス: $VENV_PATH/bin/pip"
+
     # 仮想環境内のpipをアップグレード
     log_info "pipをアップグレード中..."
 
     if [[ "$DRY_RUN" == "true" ]]; then
-        echo "[dry-run] 実行予定: \"$VENV_PATH/bin/pip\" install --upgrade pip"
+        if [[ ${#pip_env[@]} -gt 0 ]]; then
+            echo "[dry-run] 実行予定: ${pip_env[*]} \"$VENV_PATH/bin/pip\" install --upgrade pip ${pip_cert_args[*]}"
+        else
+            echo "[dry-run] 実行予定: \"$VENV_PATH/bin/pip\" install --upgrade pip"
+        fi
     else
-        "$VENV_PATH/bin/pip" install --upgrade pip >/dev/null 2>&1 || {
-            log_warning "pipのアップグレードに失敗しました (続行します)"
-        }
+        log_debug "pip実行コマンド: env ${pip_env[*]} $VENV_PATH/bin/pip install --upgrade pip ${pip_cert_args[*]}"
+        if [[ ${#pip_env[@]} -gt 0 ]]; then
+            env "${pip_env[@]}" "$VENV_PATH/bin/pip" install --upgrade pip "${pip_cert_args[@]}" >/dev/null 2>&1 || {
+                log_warning "pipのアップグレードに失敗しました (続行します)"
+            }
+        else
+            "$VENV_PATH/bin/pip" install --upgrade pip >/dev/null 2>&1 || {
+                log_warning "pipのアップグレードに失敗しました (続行します)"
+            }
+        fi
     fi
 
     # Ansibleをインストール
     log_info "Ansibleパッケージをインストール中..."
 
     if [[ "$DRY_RUN" == "true" ]]; then
-        echo "[dry-run] 実行予定: \"$VENV_PATH/bin/pip\" install \"$ANSIBLE_PACKAGE\""
+        if [[ ${#pip_env[@]} -gt 0 ]]; then
+            echo "[dry-run] 実行予定: ${pip_env[*]} \"$VENV_PATH/bin/pip\" install \"$ANSIBLE_PACKAGE\" ${pip_cert_args[*]}"
+        else
+            echo "[dry-run] 実行予定: \"$VENV_PATH/bin/pip\" install \"$ANSIBLE_PACKAGE\""
+        fi
     else
-        "$VENV_PATH/bin/pip" install "$ANSIBLE_PACKAGE" || {
-            log_error "Ansibleのインストールに失敗しました"
-            exit 1
-        }
+        log_debug "pip実行コマンド: env ${pip_env[*]} $VENV_PATH/bin/pip install $ANSIBLE_PACKAGE ${pip_cert_args[*]}"
+        
+        # PyPIへの接続テスト（verbose時のみ）
+        if [[ "$VERBOSE" == "true" && ${#pip_env[@]} -gt 0 ]]; then
+            log_debug "PyPIへの接続テスト..."
+            if env "${pip_env[@]}" timeout 5 curl -s -o /dev/null -w "%{http_code}" https://pypi.org/simple/ | grep -q "200"; then
+                log_debug "✅ PyPIへの接続成功"
+            else
+                log_warning "⚠️  PyPIへの接続テストが失敗しました（タイムアウトまたはHTTPエラー）"
+            fi
+        fi
+        
+        if [[ ${#pip_env[@]} -gt 0 ]]; then
+            env "${pip_env[@]}" "$VENV_PATH/bin/pip" install "$ANSIBLE_PACKAGE" "${pip_cert_args[@]}" || {
+                log_error "Ansibleのインストールに失敗しました"
+                log_error "証明書の問題が疑われる場合は、以下を確認してください:"
+                log_error "  1. Zscaler証明書ファイルが存在するか: $CERT_FILE"
+                log_error "  2. システム証明書バンドル: $ca_bundle"
+                log_error "  3. 証明書バンドルにZscaler証明書が含まれるか:"
+                log_error "     grep -c Zscaler \"$ca_bundle\""
+                log_error "  4. pip設定の確認: \"$VENV_PATH/bin/pip\" config list"
+                log_error "  5. pip実行コマンド: env ${pip_env[*]} $VENV_PATH/bin/pip install --cert $ca_bundle ansible"
+                log_error ""
+                log_error "手動で試す場合:"
+                log_error "  ${pip_env[*]} \"$VENV_PATH/bin/pip\" install --cert \"$ca_bundle\" ansible"
+                log_error ""
+                log_error "証明書検証を一時的に無効化してインストールする場合（非推奨）:"
+                log_error "  \"$VENV_PATH/bin/pip\" install --trusted-host pypi.org --trusted-host files.pythonhosted.org ansible"
+                exit 1
+            }
+        else
+            "$VENV_PATH/bin/pip" install "$ANSIBLE_PACKAGE" || {
+                log_error "Ansibleのインストールに失敗しました"
+                exit 1
+            }
+        fi
 
         # インストールを確認
         local version
