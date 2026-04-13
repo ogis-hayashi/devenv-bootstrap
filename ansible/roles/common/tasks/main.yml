@@ -17,8 +17,3 @@
       - htop
     state: present
   become: yes
-
-- name: Linuxbrew をインストール
-  ansible.builtin.include_tasks: linuxbrew.yml
-  tags:
-    - linuxbrew

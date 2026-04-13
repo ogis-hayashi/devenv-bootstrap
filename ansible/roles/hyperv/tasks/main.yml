@@ -10,12 +10,3 @@
 - name: Hyper-V 環境を確認
   ansible.builtin.debug:
     msg: "Hyper-V 環境でのセットアップを実行します"
-
-- name: Hyper-V integration services を確認
-  ansible.builtin.package:
-    name: linux-virtual
-    state: present
-  become: yes
-  when:
-    - environment_type == 'hyperv'
-    - ansible_facts['os_family'] == "Debian"

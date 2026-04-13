@@ -19,26 +19,23 @@
     name: databricks/tap
     state: present
     path: /home/linuxbrew/.linuxbrew/bin/brew
+  become: no
   environment:
-    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_facts.env.PATH }}"
 
 - name: Databricks CLI をインストール
   community.general.homebrew:
     name: databricks
     state: present
     path: /home/linuxbrew/.linuxbrew/bin/brew
+  become: no
   environment:
-    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
-
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_facts.env.PATH }}"
 - name: Databricks CLI のバージョンを確認
   ansible.builtin.command: /home/linuxbrew/.linuxbrew/bin/databricks --version
   register: databricks_cli_version
   changed_when: false
   failed_when: false
   environment:
-    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
-
-- name: Databricks CLI のバージョンを表示
-  ansible.builtin.debug:
-    msg: "Databricks CLI バージョン: {{ databricks_cli_version.stdout }}"
-  when: databricks_cli_version.rc == 0
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_facts.env.PATH }}"
+  become: no

@@ -20,27 +20,29 @@
     name: chezmoi
     state: present
     path: /home/linuxbrew/.linuxbrew/bin/brew
+  become: no
   environment:
-    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_facts.env.PATH }}"
 
 - name: chezmoi のバージョンを確認
   ansible.builtin.command: /home/linuxbrew/.linuxbrew/bin/chezmoi --version
   register: chezmoi_version
+  become: no
+  environment:
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_facts.env.PATH }}"
   changed_when: false
   failed_when: false
-  environment:
-    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
 
 - name: dotfiles ディレクトリの存在確認
   ansible.builtin.stat:
     path: "{{ playbook_dir }}/../dotfiles"
   register: dotfiles_dir
-  delegate_to: localhost
   become: no
+  delegate_to: localhost
 
 - name: chezmoi 初期化状態を確認
   ansible.builtin.stat:
-    path: "{{ ansible_env.HOME }}/.local/share/chezmoi"
+    path: "{{ lookup('env', 'HOME') }}/.local/share/chezmoi"
   register: chezmoi_initialized
   become: no
 
@@ -48,9 +50,9 @@
   ansible.builtin.command: >
     /home/linuxbrew/.linuxbrew/bin/chezmoi init
     --source={{ playbook_dir }}/../dotfiles
-  environment:
-    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
   become: no
+  environment:
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_facts.env.PATH }}"
   when:
     - dotfiles_dir.stat.exists
     - not chezmoi_initialized.stat.exists
@@ -58,9 +60,9 @@
 
 - name: chezmoi で dotfiles を適用
   ansible.builtin.command: /home/linuxbrew/.linuxbrew/bin/chezmoi apply --verbose
-  environment:
-    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
   become: no
+  environment:
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_facts.env.PATH }}"
   when:
     - dotfiles_dir.stat.exists
     - chezmoi_auto_apply | default(true)
@@ -75,7 +77,6 @@
       バージョン: {{ chezmoi_version.stdout | default('確認失敗') }}
       初期化状態: {{ 'initialized' if chezmoi_initialized.stat.exists else 'not initialized' }}
       dotfiles適用: {{ 'yes' if (chezmoi_auto_apply | default(true)) else 'skipped (chezmoi_auto_apply=false)' }}
-
       使い方例:
         chezmoi diff      # 現在の差分を表示
         chezmoi apply     # 変更を適用

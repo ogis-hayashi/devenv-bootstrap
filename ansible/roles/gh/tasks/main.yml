@@ -18,17 +18,17 @@
     name: gh
     state: present
     path: /home/linuxbrew/.linuxbrew/bin/brew
+  become: no
   environment:
-    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
-
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_facts.env.PATH }}"
 - name: gh のバージョンを確認
   ansible.builtin.command: /home/linuxbrew/.linuxbrew/bin/gh --version
   register: gh_version
   changed_when: false
   failed_when: false
   environment:
-    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
-
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_facts.env.PATH }}"
+  become: no
 - name: gh インストール完了メッセージ
   ansible.builtin.debug:
     msg: |
@@ -36,7 +36,6 @@
       GitHub CLI (gh) のインストールが完了しました！
       ================================================
       バージョン: {{ gh_version.stdout_lines[0] | default('確認失敗') }}
-
       使用方法:
       # GitHub にログイン
       gh auth login

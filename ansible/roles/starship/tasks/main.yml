@@ -18,17 +18,17 @@
     name: starship
     state: present
     path: /home/linuxbrew/.linuxbrew/bin/brew
+  become: no
   environment:
-    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
-
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_facts.env.PATH }}"
 - name: starship のバージョンを確認
   ansible.builtin.command: /home/linuxbrew/.linuxbrew/bin/starship --version
   register: starship_version
   changed_when: false
   failed_when: false
   environment:
-    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
-
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_facts.env.PATH }}"
+  become: no
 - name: starship インストール完了メッセージ
   ansible.builtin.debug:
     msg: |
@@ -36,7 +36,6 @@
       starship のインストールが完了しました！
       ================================================
       バージョン: {{ starship_version.stdout | default('確認失敗') }}
-
       ※ シェル設定は chezmoi で管理されます
         - ~/.bashrc に starship 初期化コードが含まれます
         - ~/.zshrc に starship 初期化コードが含まれます

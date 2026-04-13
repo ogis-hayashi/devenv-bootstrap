@@ -10,27 +10,24 @@
 - name: EC2 環境を確認
   ansible.builtin.debug:
     msg: "EC2 環境でのセットアップを実行します"
-
 - name: Linuxbrew の存在を確認
   ansible.builtin.stat:
     path: /home/linuxbrew/.linuxbrew/bin/brew
   register: linuxbrew_check
-
 - name: AWS CLI がインストール済みか確認
   ansible.builtin.command: which aws
   register: aws_check
   ignore_errors: yes
   changed_when: false
-
 - name: AWS CLI をインストール (Linuxbrew経由)
   ansible.builtin.command: /home/linuxbrew/.linuxbrew/bin/brew install awscli
   when:
     - environment_type == 'ec2'
     - linuxbrew_check.stat.exists
     - aws_check.rc != 0
+  become: no
   environment:
-    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
-
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_facts.env.PATH }}"
 - name: AWS CLI v2 をインストール (Linuxbrew非使用時)
   block:
     - name: AWS CLI インストーラーをダウンロード
@@ -38,7 +35,6 @@
         url: https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip
         dest: /tmp/awscliv2.zip
         mode: '0644'
-
     - name: AWS CLI を展開
       ansible.builtin.unarchive:
         src: /tmp/awscliv2.zip

@@ -19,23 +19,23 @@
   ignore_errors: yes
   changed_when: false
   failed_when: false
+  become: no
   environment:
-    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
-
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_facts.env.PATH }}"
 - name: uv をインストール
   ansible.builtin.command: /home/linuxbrew/.linuxbrew/bin/brew install uv
   when: uv_check.rc != 0
+  become: no
   environment:
-    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
-
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_facts.env.PATH }}"
 - name: uv のバージョンを確認
   ansible.builtin.command: /home/linuxbrew/.linuxbrew/bin/uv --version
   register: uv_version
   changed_when: false
   failed_when: false
   environment:
-    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
-
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_facts.env.PATH }}"
+  become: no
 - name: uv インストール完了メッセージ
   ansible.builtin.debug:
     msg: |
@@ -43,7 +43,6 @@
       uv のインストールが完了しました！
       ================================================
       バージョン: {{ uv_version.stdout | default('確認失敗') }}
-
       使用方法:
       # Pythonパッケージをインストール
       uv pip install <package>

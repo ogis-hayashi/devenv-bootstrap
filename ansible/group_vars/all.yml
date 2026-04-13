@@ -10,7 +10,7 @@
 ansible_python_interpreter: /usr/bin/python3
 
 # ユーザー設定
-default_user: "{{ ansible_env.USER | default('ansible') }}"
+default_user: "{{ lookup('env', 'USER') | default('ansible') }}"
 default_shell: /bin/bash
 
 # Linuxbrew 設定
@@ -43,8 +43,9 @@ chezmoi_auto_apply: true
 
 # Zscaler 証明書設定
 # ホームディレクトリの .certs ディレクトリに配置された証明書を自動検出
-zscaler_cert_path: "{{ ansible_env.HOME }}/.certs/ZscalerRootCA.cer"
-# npm/pip用のCA証明書バンドルファイル（PEM形式）
-zscaler_ca_bundle_path: "{{ ansible_env.HOME }}/.certs/ca-bundle.pem"
+# 注: zscaler_cert_path と zscaler_ca_bundle_path は playbook 内で動的に設定されます
+# （facts 収集後に ansible_facts.env.HOME を使用）
+# zscaler_cert_path: "{{ lookup('env', 'HOME') | default('/home/ubuntu') }}/.certs/ZscalerRootCA.cer"
+# zscaler_ca_bundle_path: "{{ lookup('env', 'HOME') | default('/home/ubuntu') }}/.certs/ca-bundle.pem"
 # 証明書が存在する場合に true に設定される（実行時に自動判定）
 zscaler_enabled: false

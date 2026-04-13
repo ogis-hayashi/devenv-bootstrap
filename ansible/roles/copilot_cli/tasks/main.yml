@@ -19,17 +19,17 @@
     name: copilot-cli
     state: present
     path: /home/linuxbrew/.linuxbrew/bin/brew
+  become: no
   environment:
-    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
-
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_facts.env.PATH }}"
 - name: GitHub Copilot CLI のバージョンを確認
   ansible.builtin.command: /home/linuxbrew/.linuxbrew/bin/github-copilot-cli --version
   register: copilot_cli_version
   changed_when: false
   failed_when: false
   environment:
-    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
-
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_facts.env.PATH }}"
+  become: no
 - name: GitHub Copilot CLI インストール完了メッセージ
   ansible.builtin.debug:
     msg: |
@@ -37,7 +37,6 @@
       GitHub Copilot CLI のインストールが完了しました！
       ================================================
       バージョン: {{ copilot_cli_version.stdout | default('確認失敗') }}
-
       使用方法:
       # GitHub Copilot CLI の認証
       github-copilot-cli auth

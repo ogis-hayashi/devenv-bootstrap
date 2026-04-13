@@ -18,17 +18,17 @@
     name: git-delta
     state: present
     path: /home/linuxbrew/.linuxbrew/bin/brew
+  become: no
   environment:
-    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
-
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_facts.env.PATH }}"
 - name: delta のバージョンを確認
   ansible.builtin.command: /home/linuxbrew/.linuxbrew/bin/delta --version
   register: delta_version
   changed_when: false
   failed_when: false
   environment:
-    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
-
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_facts.env.PATH }}"
+  become: no
 - name: git-delta インストール完了メッセージ
   ansible.builtin.debug:
     msg: |
@@ -36,7 +36,6 @@
       git-delta のインストールが完了しました！
       ================================================
       バージョン: {{ delta_version.stdout | default('確認失敗') }}
-
       ※ Git設定は chezmoi で管理されます（~/.gitconfig）
 
       使用方法:

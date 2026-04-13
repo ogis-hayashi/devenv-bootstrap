@@ -27,15 +27,24 @@
   gather_facts: yes
 
   tasks:
+    # facts 収集後に環境依存の変数を設定
+    # become: no で実行ユーザーのホームディレクトリを取得
+    - name: Zscaler証明書パスを設定
+      ansible.builtin.set_fact:
+        zscaler_cert_path: "{{ lookup('env', 'HOME') }}/.certs/ZscalerRootCA.cer"
+        zscaler_ca_bundle_path: "{{ lookup('env', 'HOME') }}/.certs/ca-bundle.pem"
+      become: no
+      when: zscaler_cert_path is not defined or zscaler_ca_bundle_path is not defined
+
     - name: セットアップ開始メッセージ
       ansible.builtin.debug:
         msg: |
           ================================================
           ブートストラップを開始します
           ================================================
-          ホスト: {{ ansible_hostname }}
+          ホスト: {{ ansible_facts.hostname }}
           環境タイプ: {{ environment_type | default('unknown') }}
-          ディストリビューション: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          ディストリビューション: {{ ansible_facts.distribution }} {{ ansible_facts.distribution_version }}
           ================================================
 
     - name: Zscalerルート証明書の存在確認
@@ -77,6 +86,14 @@
       tags:
         - common
         - packages
+
+    - name: chezmoi をインストール
+      ansible.builtin.include_role:
+        name: chezmoi
+      tags:
+        - chezmoi
+        - dotfiles
+        - tools
 
     - name: topgrade をインストール
       ansible.builtin.include_role:
@@ -154,14 +171,6 @@
         name: eza
       tags:
         - eza
-        - tools
-
-    - name: chezmoi をインストール
-      ansible.builtin.include_role:
-        name: chezmoi
-      tags:
-        - chezmoi
-        - dotfiles
         - tools
 
     - name: xh をインストール
@@ -280,6 +289,10 @@
           次のステップ:
           1. シェルを再起動するか、以下を実行してLinuxbrewを有効化:
              eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+
+             ※ chezmoi により ~/.bashrc と ~/.zshrc には既に
+                Linuxbrew の初期化コードが書き込まれています。
+                次回ログイン時から自動的に有効化されます。
 
           2. Linuxbrew の動作確認:
              brew --version

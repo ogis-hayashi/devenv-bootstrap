@@ -18,17 +18,17 @@
     name: bat
     state: present
     path: /home/linuxbrew/.linuxbrew/bin/brew
+  become: no
   environment:
-    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
-
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_facts.env.PATH }}"
 - name: bat のバージョンを確認
   ansible.builtin.command: /home/linuxbrew/.linuxbrew/bin/bat --version
   register: bat_version
   changed_when: false
   failed_when: false
   environment:
-    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
-
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_facts.env.PATH }}"
+  become: no
 - name: bat インストール完了メッセージ
   ansible.builtin.debug:
     msg: |
@@ -36,7 +36,6 @@
       bat のインストールが完了しました！
       ================================================
       バージョン: {{ bat_version.stdout | default('確認失敗') }}
-
       使用方法:
       # ファイルを表示（構文ハイライト付き）
       bat <filename>

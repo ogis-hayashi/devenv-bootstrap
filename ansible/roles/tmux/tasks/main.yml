@@ -21,16 +21,15 @@
     name: tmux
     state: present
     path: /home/linuxbrew/.linuxbrew/bin/brew
+  become: no
   environment:
-    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
-
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_facts.env.PATH }}"
 - name: tpm（tmux plugin manager）をクローン
   ansible.builtin.git:
     repo: https://github.com/tmux-plugins/tpm
-    dest: "{{ ansible_env.HOME }}/.tmux/plugins/tpm"
+    dest: "{{ lookup('env', 'HOME') }}/.tmux/plugins/tpm"
     update: no
   become: no
-
 - name: PowerLine と拡張セグメントをインストール (pip3)
   ansible.builtin.pip:
     name:
@@ -38,37 +37,32 @@
       - powerline-mem-segment
     state: present
     executable: pip3
-    extra_args: --user
   become: no
-
 - name: PowerLine のインストールパスを確認
   ansible.builtin.shell: |
     python3 -c "import site; print(site.getsitepackages()[0])"
   register: python_site_packages
   changed_when: false
   become: no
-
 - name: .config ディレクトリを作成
   ansible.builtin.file:
-    path: "{{ ansible_env.HOME }}/.config"
+    path: "{{ lookup('env', 'HOME') }}/.config"
     state: directory
     mode: '0755'
   become: no
-
 - name: tmux のバージョンを確認
   ansible.builtin.command: /home/linuxbrew/.linuxbrew/bin/tmux -V
   register: tmux_version
   changed_when: false
   failed_when: false
   environment:
-    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
-
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_facts.env.PATH }}"
+  become: no
 - name: PowerLine のバージョンを確認
   ansible.builtin.command: powerline --version
   register: powerline_version
   changed_when: false
   failed_when: false
-
 - name: tmux インストール完了メッセージ
   ansible.builtin.debug:
     msg: |
@@ -78,7 +72,6 @@
       tmux バージョン: {{ tmux_version.stdout | default('確認失敗') }}
       PowerLine バージョン: {{ powerline_version.stdout | default('確認失敗') }}
       Python site-packages: {{ python_site_packages.stdout | default('確認失敗') }}
-
       インストール済みコンポーネント:
       - powerline-status (ステータスライン表示)
       - powerline-mem-segment (メモリ使用量セグメント)

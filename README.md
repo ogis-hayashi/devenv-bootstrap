@@ -29,14 +29,17 @@ cd dev-env-bootstrap
 mkdir -p ~/.certs
 cp /path/to/ZscalerRootCA.cer ~/.certs/
 
-# 1. Ansibleでシステム基盤をセットアップ
+# 1. Ansibleインストール用の仮想環境をセットアップ
 ./bootstrap.sh
 
-# 2. Ansibleでパッケージとツールをインストール
+# 2. 仮想環境を有効化
+source ~/.ansible-venv/bin/activate
+
+# 3. Ansibleでパッケージとツールをインストール
 cd ansible
 ansible-playbook -i inventories/wsl/hosts site.yml
 
-# 3. （オプション）chezmoiで個人設定を適用
+# 4. （オプション）chezmoiで個人設定を適用
 chezmoi init /path/to/devenv-bootstrap/dotfiles
 chezmoi apply -v
 ```

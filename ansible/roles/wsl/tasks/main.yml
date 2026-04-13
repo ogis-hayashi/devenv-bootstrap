@@ -10,14 +10,12 @@
 - name: WSL 環境を確認
   ansible.builtin.debug:
     msg: "WSL 環境でのセットアップを実行します"
-
 - name: /etc/wsl.conf を設定
   ansible.builtin.copy:
     dest: /etc/wsl.conf
     content: |
       [boot]
       systemd=true
-
       [network]
       generateResolvConf = true
 

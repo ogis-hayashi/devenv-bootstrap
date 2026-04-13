@@ -19,10 +19,6 @@
     state: present
     path: /home/linuxbrew/.linuxbrew/bin/brew
   environment:
-    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_facts.env.PATH }}"
+  become: no
   when: environment_type | default('') != 'docker'
-
-- name: topgrade がスキップされたことを通知 (Docker環境)
-  ansible.builtin.debug:
-    msg: "Docker環境のため topgrade のインストールをスキップしました"
-  when: environment_type | default('') == 'docker'

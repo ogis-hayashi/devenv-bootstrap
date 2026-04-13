@@ -21,7 +21,6 @@
     mode: '0750'
     owner: root
     group: root
-
 - name: プロキシ環境変数を保持する設定を追加
   ansible.builtin.lineinfile:
     path: /etc/sudoers.d/90-env-keep-proxy
@@ -32,7 +31,6 @@
     group: root
     validate: '/usr/sbin/visudo -cf %s'
   register: proxy_config
-
 - name: EDITOR環境変数を保持する設定を追加
   ansible.builtin.lineinfile:
     path: /etc/sudoers.d/90-env-keep-editor
@@ -43,7 +41,6 @@
     group: root
     validate: '/usr/sbin/visudo -cf %s'
   register: editor_config
-
 - name: sudoグループにパスワードなしsudo権限を付与
   ansible.builtin.lineinfile:
     path: /etc/sudoers.d/90-sudo-nopasswd
@@ -54,7 +51,3 @@
     group: root
     validate: '/usr/sbin/visudo -cf %s'
   register: nopasswd_config
-
-- name: sudoers設定の変更を確認
-  ansible.builtin.debug:
-    msg: "sudoers設定を更新しました: プロキシ={{ proxy_config.changed }}, EDITOR={{ editor_config.changed }}, NOPASSWD={{ nopasswd_config.changed }}"

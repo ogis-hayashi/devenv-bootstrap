@@ -18,17 +18,17 @@
     name: xh
     state: present
     path: /home/linuxbrew/.linuxbrew/bin/brew
+  become: no
   environment:
-    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
-
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_facts.env.PATH }}"
 - name: xh のバージョンを確認
   ansible.builtin.command: /home/linuxbrew/.linuxbrew/bin/xh --version
   register: xh_version
   changed_when: false
   failed_when: false
   environment:
-    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
-
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_facts.env.PATH }}"
+  become: no
 - name: xh インストール完了メッセージ
   ansible.builtin.debug:
     msg: |
@@ -36,7 +36,6 @@
       xh のインストールが完了しました！
       ================================================
       バージョン: {{ xh_version.stdout | default('確認失敗') }}
-
       使用方法:
       # GET リクエスト
       xh httpbin.org/get

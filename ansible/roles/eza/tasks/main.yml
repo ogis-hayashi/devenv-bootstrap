@@ -18,17 +18,17 @@
     name: eza
     state: present
     path: /home/linuxbrew/.linuxbrew/bin/brew
+  become: no
   environment:
-    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
-
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_facts.env.PATH }}"
 - name: eza のバージョンを確認
   ansible.builtin.command: /home/linuxbrew/.linuxbrew/bin/eza --version
   register: eza_version
   changed_when: false
   failed_when: false
   environment:
-    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
-
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_facts.env.PATH }}"
+  become: no
 - name: eza インストール完了メッセージ
   ansible.builtin.debug:
     msg: |
@@ -36,7 +36,6 @@
       eza のインストールが完了しました！
       ================================================
       バージョン: {{ eza_version.stdout | default('確認失敗') }}
-
       使用方法:
       # 基本的なリスト表示
       eza
