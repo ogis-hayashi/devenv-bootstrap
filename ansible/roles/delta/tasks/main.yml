@@ -29,60 +29,15 @@
   environment:
     PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
 
-- name: Git に delta をページャーとして設定
-  community.general.git_config:
-    name: core.pager
-    scope: global
-    value: delta
-  become: no
-  when: not use_chezmoi_for_dotfiles
-
-- name: Git に delta を interactive diffFilter として設定
-  community.general.git_config:
-    name: interactive.diffFilter
-    scope: global
-    value: delta --color-only
-  become: no
-  when: not use_chezmoi_for_dotfiles
-
-- name: delta のナビゲーション機能を有効化
-  community.general.git_config:
-    name: delta.navigate
-    scope: global
-    value: "true"
-  become: no
-  when: not use_chezmoi_for_dotfiles
-
-- name: Git のマージコンフリクトスタイルを zdiff3 に設定
-  community.general.git_config:
-    name: merge.conflictStyle
-    scope: global
-    value: zdiff3
-  become: no
-  when: not use_chezmoi_for_dotfiles
-
-- name: Git の diff で移動したコードの色分けを有効化
-  community.general.git_config:
-    name: diff.colorMoved
-    scope: global
-    value: default
-  become: no
-  when: not use_chezmoi_for_dotfiles
-
 - name: git-delta インストール完了メッセージ
   ansible.builtin.debug:
     msg: |
       ================================================
-      git-delta のインストールと設定が完了しました！
+      git-delta のインストールが完了しました！
       ================================================
       バージョン: {{ delta_version.stdout | default('確認失敗') }}
 
-      設定済みの Git config:
-      - core.pager = delta
-      - interactive.diffFilter = delta --color-only
-      - delta.navigate = true
-      - merge.conflictStyle = zdiff3
-      - diff.colorMoved = default
+      ※ Git設定は chezmoi で管理されます（~/.gitconfig）
 
       使用方法:
       git diff        # 差分を delta で表示

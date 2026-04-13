@@ -4,10 +4,12 @@
 # ============================================================================
 #
 # 目的:
-#   chezmoi（ドットファイル管理ツール）を Homebrew (Linuxbrew) でインストールします
+#   chezmoi（ドットファイル管理ツール）を Homebrew (Linuxbrew) でインストールし、
+#   dotfiles ディレクトリから設定を初期化・適用します
 #
 # 前提条件:
 #   - Linuxbrew がインストール済みであること
+#   - dotfiles ディレクトリが存在すること
 #
 # 参考:
 #   - chezmoi: https://www.chezmoi.io/
@@ -29,6 +31,41 @@
   environment:
     PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
 
+- name: dotfiles ディレクトリの存在確認
+  ansible.builtin.stat:
+    path: "{{ playbook_dir }}/../dotfiles"
+  register: dotfiles_dir
+  delegate_to: localhost
+  become: no
+
+- name: chezmoi 初期化状態を確認
+  ansible.builtin.stat:
+    path: "{{ ansible_env.HOME }}/.local/share/chezmoi"
+  register: chezmoi_initialized
+  become: no
+
+- name: chezmoi を初期化（dotfiles ディレクトリから）
+  ansible.builtin.command: >
+    /home/linuxbrew/.linuxbrew/bin/chezmoi init
+    --source={{ playbook_dir }}/../dotfiles
+  environment:
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
+  become: no
+  when:
+    - dotfiles_dir.stat.exists
+    - not chezmoi_initialized.stat.exists
+    - chezmoi_auto_apply | default(true)
+
+- name: chezmoi で dotfiles を適用
+  ansible.builtin.command: /home/linuxbrew/.linuxbrew/bin/chezmoi apply --verbose
+  environment:
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
+  become: no
+  when:
+    - dotfiles_dir.stat.exists
+    - chezmoi_auto_apply | default(true)
+  changed_when: true
+
 - name: chezmoi インストール完了メッセージ
   ansible.builtin.debug:
     msg: |
@@ -36,7 +73,13 @@
       chezmoi のインストールが完了しました！
       ================================================
       バージョン: {{ chezmoi_version.stdout | default('確認失敗') }}
+      初期化状態: {{ 'initialized' if chezmoi_initialized.stat.exists else 'not initialized' }}
+      dotfiles適用: {{ 'yes' if (chezmoi_auto_apply | default(true)) else 'skipped (chezmoi_auto_apply=false)' }}
 
       使い方例:
-        chezmoi init <GitリポジトリURL>
-        chezmoi apply
+        chezmoi diff      # 現在の差分を表示
+        chezmoi apply     # 変更を適用
+        chezmoi edit ~/.bashrc  # テンプレートを編集
+        chezmoi cd        # chezmoiソースディレクトリに移動
+
+      詳細: https://www.chezmoi.io/

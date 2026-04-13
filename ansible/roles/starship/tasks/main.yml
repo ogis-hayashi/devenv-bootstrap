@@ -21,44 +21,6 @@
   environment:
     PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_env.PATH }}"
 
-- name: starship を .bashrc に追加
-  ansible.builtin.lineinfile:
-    path: "{{ ansible_env.HOME }}/.bashrc"
-    line: 'eval "$(starship init bash)"'
-    create: yes
-    state: present
-  become: no
-  when: not use_chezmoi_for_dotfiles
-
-- name: starship を .zshrc に追加 (zsh がインストールされている場合)
-  ansible.builtin.lineinfile:
-    path: "{{ ansible_env.HOME }}/.zshrc"
-    line: 'eval "$(starship init zsh)"'
-    create: yes
-    state: present
-  become: no
-  when:
-    - not use_chezmoi_for_dotfiles
-    - ansible_facts['ansible_env'].SHELL is defined and 'zsh' in ansible_facts['ansible_env'].SHELL
-  ignore_errors: yes
-
-- name: .config ディレクトリを作成
-  ansible.builtin.file:
-    path: "{{ ansible_env.HOME }}/.config"
-    state: directory
-    mode: '0755'
-  become: no
-  when: not use_chezmoi_for_dotfiles
-
-- name: starship.toml 設定ファイルをコピー
-  ansible.builtin.copy:
-    src: starship.toml
-    dest: "{{ ansible_env.HOME }}/.config/starship.toml"
-    mode: '0644'
-    force: no
-  become: no
-  when: not use_chezmoi_for_dotfiles
-
 - name: starship のバージョンを確認
   ansible.builtin.command: /home/linuxbrew/.linuxbrew/bin/starship --version
   register: starship_version
@@ -75,20 +37,17 @@
       ================================================
       バージョン: {{ starship_version.stdout | default('確認失敗') }}
 
-      設定済み:
-      - .bashrc に starship を追加しました
-      - .zshrc に starship を追加しました（zsh の場合）
-      - ~/.config/starship.toml に設定ファイルを配置しました
+      ※ シェル設定は chezmoi で管理されます
+        - ~/.bashrc に starship 初期化コードが含まれます
+        - ~/.zshrc に starship 初期化コードが含まれます
+        - ~/.config/starship.toml に設定ファイルがあります
 
       使用方法:
       # 新しいシェルセッションを開始するか、以下を実行:
       source ~/.bashrc
 
       # 設定ファイルをカスタマイズ:
-      vim ~/.config/starship.toml
-
-      # プリセット一覧:
-      starship preset
+      chezmoi edit ~/.config/starship.toml
 
       公式サイト: https://starship.rs/
       ================================================

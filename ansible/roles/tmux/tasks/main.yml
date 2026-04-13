@@ -55,39 +55,6 @@
     mode: '0755'
   become: no
 
-- name: .config/powerline ディレクトリを作成
-  ansible.builtin.file:
-    path: "{{ ansible_env.HOME }}/.config/powerline"
-    state: directory
-    mode: '0755'
-  become: no
-  when: not use_chezmoi_for_dotfiles
-
-- name: PowerLine 設定ファイルをコピー
-  ansible.builtin.copy:
-    src: powerline/
-    dest: "{{ ansible_env.HOME }}/.config/powerline/"
-    mode: '0644'
-    force: no
-  become: no
-  when: not use_chezmoi_for_dotfiles
-
-- name: .tmux.conf 設定ファイルをコピー
-  ansible.builtin.copy:
-    src: .tmux.conf
-    dest: "{{ ansible_env.HOME }}/.tmux.conf"
-    mode: '0644'
-    force: no
-  become: no
-  when: not use_chezmoi_for_dotfiles
-
-- name: .tmux.conf 内の PowerLine パスを更新
-  ansible.builtin.replace:
-    path: "{{ ansible_env.HOME }}/.tmux.conf"
-    regexp: '~/.local/lib/python3\.8/site-packages'
-    replace: "{{ python_site_packages.stdout }}"
-  become: no
-
 - name: tmux のバージョンを確認
   ansible.builtin.command: /home/linuxbrew/.linuxbrew/bin/tmux -V
   register: tmux_version
@@ -116,8 +83,9 @@
       - powerline-status (ステータスライン表示)
       - powerline-mem-segment (メモリ使用量セグメント)
 
-      設定済み:
-      - ~/.tmux.conf に設定ファイルを配置しました
+      ※ 設定ファイルは chezmoi で管理されます
+        - ~/.tmux.conf
+        - ~/.config/powerline/
       - ~/.config/powerline/ に PowerLine 設定を配置しました
       - ~/.tmux/plugins/tpm に tpm（プラグインマネージャー）をインストールしました
 

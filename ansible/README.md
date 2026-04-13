@@ -19,7 +19,7 @@
 3. **共通パッケージインストール**
    - 基本的な開発ツール (git, curl, wget, vim, htop)
    - Linuxbrew本体のインストール
-   - シェル設定ファイル (`.bashrc`, `.zshrc`) への自動追加
+   - ※ シェル設定ファイルは chezmoi で管理されます
 
 4. **topgrade インストール**
    - パッケージ一括更新ツール topgrade (Linuxbrew経由)
@@ -36,6 +36,7 @@
 7. **starship インストール**
    - 高速でカスタマイズ可能なシェルプロンプト (Linuxbrew経由)
    - Rustベースのクロスシェル対応プロンプト
+   - ※ シェル初期化設定は chezmoi で管理されます
 
 8. **bat インストール**
    - 構文ハイライト機能付きcatの改良版 (Linuxbrew経由)
@@ -44,6 +45,7 @@
 9. **git-delta インストール**
    - Git差分の構文ハイライトツール (Linuxbrew経由)
    - より読みやすいgit diff表示
+   - ※ Git設定は chezmoi で管理されます
 
 10. **GitHub CLI (gh) インストール**
    - GitHubの公式コマンドラインツール (Linuxbrew経由)
@@ -61,9 +63,10 @@
    - lsコマンドの現代的な代替ツール (Linuxbrew経由)
    - アイコン表示、Git統合、ツリー表示
 
-14. **chezmoi インストール**
+14. **chezmoi インストールと初期化**
    - ドットファイル管理ツール chezmoi (Linuxbrew経由)
-   - dotfilesの初期化・適用が簡単
+   - dotfilesディレクトリからの自動初期化と適用
+   - `.bashrc`, `.zshrc`, `.gitconfig`, `.tmux.conf` などを管理
 
 15. **xh インストール**
    - HTTPクライアントツール (Linuxbrew経由)
@@ -72,6 +75,7 @@
 16. **tmux インストール**
    - ターミナルマルチプレクサ (Linuxbrew経由)
    - 複数のシェルセッションを管理、Powerline統合
+   - ※ tmux設定ファイルは chezmoi で管理されます
 
 17. **Docker インストール**
    - Docker Engine の公式スクリプト経由インストール
@@ -102,26 +106,33 @@ Ansibleがインストールされている必要があります。`bootstrap.sh
 source ~/.ansible-venv/bin/activate
 ```
 
-### dotfiles管理方法の選択
+### dotfiles管理方法
 
-`group_vars/all.yml` で設定ファイルの管理方法を選択できます：
+`group_vars/all.yml` でリポジトリに含まれる dotfiles の自動適用を制御します：
 
 ```yaml
-# chezmoi で dotfiles を管理する場合は true に設定
-use_chezmoi_for_dotfiles: false  # デフォルト: Ansibleで管理
+# このリポジトリの dotfiles を chezmoi で自動適用する場合は true に設定
+chezmoi_auto_apply: true  # デフォルト: 自動適用（推奨）
 ```
 
-**推奨**: `use_chezmoi_for_dotfiles: true` に設定し、以下のワークフローを使用：
+**デフォルトでは dotfiles を自動適用します** (推奨設定):
 
 ```bash
-# 1. Ansibleでシステム基盤とパッケージをインストール
+# Ansibleでシステム基盤とパッケージをインストール
 cd ansible
 ansible-playbook -i inventories/wsl/hosts site.yml
 
-# 2. chezmoiで個人設定を適用
-chezmoi init /path/to/devenv-bootstrap/dotfiles
-chezmoi apply -v
+# chezmoi が自動的に dotfiles を初期化・適用します
+# （bootstrap playbook 内で自動実行されます）
 ```
+
+chezmoiによって管理されるファイル:
+- `~/.bashrc`, `~/.zshrc` - シェル設定（Linuxbrew、starship初期化）
+- `~/.gitconfig` - Git設定（delta、エイリアス）
+- `~/.tmux.conf` - tmux設定
+- `~/.config/starship.toml` - starshipプロンプト設定
+- `~/.config/powerline/` - Powerline設定
+- `~/.ssh/config` - SSH設定
 
 ### 実行方法
 
@@ -299,8 +310,6 @@ ansible/
     │   └── tasks/
     │       └── main.yml
     ├── starship/                    # starshipインストールロール
-    │   ├── files/
-    │   │   └── starship.toml
     │   └── tasks/
     │       └── main.yml
     ├── bat/                         # batインストールロール
@@ -359,7 +368,8 @@ ansible/
 1. 基本パッケージのインストール (git, curl, wget, vim, htop)
 2. ディストリビューションに応じた依存パッケージのインストール
 3. 公式インストールスクリプトを使用したLinuxbrewインストール
-4. シェル設定ファイルへのPATH追加
+
+※ シェル設定ファイル (`.bashrc`, `.zshrc`) への PATH 追加は chezmoi で管理されます
 
 **対応ディストリビューション**:
 - Ubuntu/Debian (apt)
@@ -512,8 +522,9 @@ npm test
 
 **実行内容**:
 - Linuxbrew 経由で starship をインストール
-- .bashrc と .zshrc に starship の初期化コードを追加
 - Rustベースの次世代シェルプロンプト
+
+※ シェル初期化設定 (`.bashrc`, `.zshrc`) と設定ファイル (`~/.config/starship.toml`) は chezmoi で管理されます
 
 **前提条件**:
 - Linuxbrew がインストール済みであること
@@ -540,9 +551,9 @@ source ~/.bashrc
 starship --version
 ```
 
-**自動配置される設定ファイル**:
+**設定ファイルの管理**:
 
-`~/.config/starship.toml` に実用的な設定ファイルが自動的に配置されます。
+chezmoi によって `~/.config/starship.toml` に実用的な設定ファイルが配置されます。
 この設定には以下が含まれています:
 - Git ブランチとステータス表示
 - Python、Node.js、Rustなどの言語バージョン表示
@@ -553,8 +564,8 @@ starship --version
 
 カスタマイズ:
 ```bash
-# 設定ファイルを編集
-vim ~/.config/starship.toml
+# 設定ファイルを編集（chezmoi経由）
+chezmoi edit ~/.config/starship.toml
 
 # プリセット一覧を表示
 starship preset
@@ -881,18 +892,20 @@ ansible-inventory -i inventories/wsl/hosts --list
 
 ### 管理方法の選択
 
-`group_vars/all.yml` で設定ファイルの管理方法を選択できます：
+`group_vars/all.yml` でリポジトリに含まれる dotfiles の自動適用を制御できます：
 
 ```yaml
-# chezmoi で dotfiles を管理する場合は true に設定
-# true の場合、Ansible は設定ファイル（.bashrc, .zshrc, .gitconfig等）を配置しません
-use_chezmoi_for_dotfiles: false  # デフォルト: Ansibleで管理
+# このリポジトリの dotfiles を chezmoi で自動適用する場合は true に設定
+# false の場合、chezmoi ツールはインストールされますが dotfiles の初期化・適用はスキップされます
+chezmoi_auto_apply: true  # デフォルト: 自動適用（推奨）
 ```
 
-### 推奨構成: ハイブリッドアプローチ
+### 推奨構成: ハイブリッドアプローチ（デフォルト）
 
 **Ansible**: システム基盤とパッケージのインストール  
 **chezmoi**: 個人設定ファイル（dotfiles）の管理
+
+※ `chezmoi_auto_apply: true` がデフォルト設定です
 
 #### Ansibleが管理するもの
 
@@ -919,19 +932,18 @@ use_chezmoi_for_dotfiles: false  # デフォルト: Ansibleで管理
 ### ワークフロー
 
 ```bash
-# 手順1: Ansibleでシステム基盤を構築
+# 手顺1: Ansibleでシステム基盤を構築（chezmoiが自動的のdotfilesを適用）
 cd ansible
 ansible-playbook -i inventories/wsl/hosts site.yml
 
-# 手順2: chezmoiで個人設定を適用
-chezmoi init /path/to/devenv-bootstrap/dotfiles
-# または GitHubリポジトリから
-chezmoi init https://github.com/your-username/dotfiles.git
-
+# 手顺2: （オプション）chezmoiで追加のカスタマイズ
 # 変更内容を確認
 chezmoi diff
 
-# 設定を適用
+# 設定を編集
+chezmoi edit ~/.bashrc
+
+# 変更を適用
 chezmoi apply -v
 ```
 
