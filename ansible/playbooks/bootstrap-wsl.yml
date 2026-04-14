@@ -1,0 +1,79 @@
+---
+# ============================================================================
+# WSL ブートストラップ Playbook
+# ============================================================================
+#
+# 目的:
+#   WSL 環境専用の初期セットアップを実行します
+#
+# 使用方法:
+#   ansible-playbook -i inventories/wsl/hosts playbooks/bootstrap-wsl.yml
+#
+# Dry-run:
+#   ansible-playbook -i inventories/wsl/hosts playbooks/bootstrap-wsl.yml --check
+#
+# 必要要件:
+#   - WSL 環境（Windows Subsystem for Linux）
+#   - inventories/wsl/hosts が設定済み
+#
+# ============================================================================
+
+# 共通セットアップを実行
+- import_playbook: includes/common-setup.yml
+
+# WSL 固有のセットアップ
+- name: ブートストラップ - WSL固有の設定
+  hosts: wsl
+  become: yes
+  gather_facts: yes
+
+  tasks:
+    - name: 環境タイプがWSLであることを確認
+      ansible.builtin.fail:
+        msg: "このplaybookはWSL環境専用です。environment_type='wsl'が必要です。"
+      when: environment_type != 'wsl'
+
+    - name: WSL固有セットアップ開始メッセージ
+      ansible.builtin.debug:
+        msg: |
+          ================================================
+          WSL固有のセットアップを開始します
+          ================================================
+          環境: {{ environment_type }}
+          ホスト: {{ ansible_facts.hostname }}
+          ================================================
+
+    - name: WSL ロールを適用
+      ansible.builtin.include_role:
+        name: wsl
+      tags:
+        - wsl
+
+# セットアップ完了メッセージ
+- name: WSL ブートストラップ完了
+  hosts: wsl
+  gather_facts: no
+
+  tasks:
+    - name: WSL セットアップ完了メッセージ
+      ansible.builtin.debug:
+        msg: |
+          ================================================
+          WSL ブートストラップが完了しました！
+          ================================================
+
+          次のステップ:
+          1. シェルを再起動するか、以下を実行してLinuxbrewを有効化:
+             eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+
+             ※ chezmoi により ~/.bashrc と ~/.zshrc には既に
+                Linuxbrew の初期化コードが書き込まれています。
+                次回ログイン時から自動的に有効化されます。
+
+          2. Linuxbrew の動作確認:
+             brew --version
+
+          3. WSL固有の設定を確認:
+             cat /etc/wsl.conf
+
+          ================================================

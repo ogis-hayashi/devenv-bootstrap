@@ -1,0 +1,83 @@
+---
+# ============================================================================
+# AWS EC2 ブートストラップ Playbook
+# ============================================================================
+#
+# 目的:
+#   AWS EC2 環境専用の初期セットアップを実行します
+#
+# 使用方法:
+#   ansible-playbook -i inventories/ec2/hosts playbooks/bootstrap-ec2.yml
+#
+# Dry-run:
+#   ansible-playbook -i inventories/ec2/hosts playbooks/bootstrap-ec2.yml --check
+#
+# 必要要件:
+#   - AWS EC2 環境（EC2 Instance）
+#   - inventories/ec2/hosts が設定済み
+#
+# ============================================================================
+
+# 共通セットアップを実行
+- import_playbook: includes/common-setup.yml
+
+# EC2 固有のセットアップ
+- name: ブートストラップ - EC2固有の設定
+  hosts: ec2
+  become: yes
+  gather_facts: yes
+
+  tasks:
+    - name: 環境タイプがEC2であることを確認
+      ansible.builtin.fail:
+        msg: "このplaybookはEC2環境専用です。environment_type='ec2'が必要です。"
+      when: environment_type != 'ec2'
+
+    - name: EC2固有セットアップ開始メッセージ
+      ansible.builtin.debug:
+        msg: |
+          ================================================
+          EC2固有のセットアップを開始します
+          ================================================
+          環境: {{ environment_type }}
+          クラウドプロバイダー: {{ cloud_provider | default('aws') }}
+          ホスト: {{ ansible_facts.hostname }}
+          ================================================
+
+    - name: EC2 ロールを適用
+      ansible.builtin.include_role:
+        name: ec2
+      tags:
+        - ec2
+
+# セットアップ完了メッセージ
+- name: EC2 ブートストラップ完了
+  hosts: ec2
+  gather_facts: no
+
+  tasks:
+    - name: EC2 セットアップ完了メッセージ
+      ansible.builtin.debug:
+        msg: |
+          ================================================
+          EC2 ブートストラップが完了しました！
+          ================================================
+
+          次のステップ:
+          1. シェルを再起動するか、以下を実行してLinuxbrewを有効化:
+             eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+
+             ※ chezmoi により ~/.bashrc と ~/.zshrc には既に
+                Linuxbrew の初期化コードが書き込まれています。
+                次回ログイン時から自動的に有効化されます。
+
+          2. Linuxbrew の動作確認:
+             brew --version
+
+          3. AWS CLI の動作確認:
+             aws --version
+
+          4. AWS にアクセス設定:
+             aws configure
+
+          ================================================

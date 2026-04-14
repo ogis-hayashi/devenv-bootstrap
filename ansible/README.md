@@ -136,12 +136,46 @@ chezmoiによって管理されるファイル:
 
 ### 実行方法
 
-環境に応じたインベントリファイルを指定して実行します:
+環境に応じたインベントリファイルを指定して実行します。
+
+#### 🆕 環境別専用playbook（推奨）
+
+各環境に特化したplaybookを使用する方法（新機能）:
 
 ```bash
 # ansibleディレクトリに移動
 cd ansible
 
+# WSL環境専用 - より明確で確実
+ansible-playbook -i inventories/wsl/hosts playbooks/bootstrap-wsl.yml
+
+# Azure VM環境専用 - Azure CLIも自動インストール
+ansible-playbook -i inventories/azure-vm/hosts playbooks/bootstrap-azure-vm.yml
+
+# EC2環境専用 - AWS CLIも自動インストール
+ansible-playbook -i inventories/ec2/hosts playbooks/bootstrap-ec2.yml
+
+# Hyper-V環境専用
+ansible-playbook -i inventories/hyperv/hosts playbooks/bootstrap-hyperv.yml
+
+# ベアメタル環境専用
+ansible-playbook -i inventories/baremetal/hosts playbooks/bootstrap-baremetal.yml
+
+# Docker環境専用
+ansible-playbook -i inventories/docker/hosts playbooks/bootstrap-docker.yml
+```
+
+**環境別playbookのメリット**:
+- ✅ **明確性**: 実行対象環境が一目で分かる
+- ✅ **安全性**: 環境タイプの自動チェック機能内蔵
+- ✅ **環境固有メッセージ**: 各環境に最適化された完了メッセージ
+- ✅ **デバッグ容易**: 環境固有の問題を切り分けやすい
+
+#### 従来の汎用playbook（後方互換）
+
+従来通りの汎用playbookも引き続き利用可能です:
+
+```bash
 # WSL環境の場合
 ansible-playbook -i inventories/wsl/hosts site.yml
 
@@ -159,6 +193,15 @@ ansible-playbook -i inventories/baremetal/hosts site.yml
 
 # Docker環境の場合
 ansible-playbook -i inventories/docker/hosts site.yml
+```
+
+または、統合ブートストラップ（bootstrap.yml）も利用可能:
+
+```bash
+# 統合版ブートストラップ（全環境対応）
+ansible-playbook -i inventories/wsl/hosts playbooks/bootstrap.yml
+ansible-playbook -i inventories/azure-vm/hosts playbooks/bootstrap.yml
+ansible-playbook -i inventories/ec2/hosts playbooks/bootstrap.yml
 ```
 
 ## 📖 詳細な使用方法
@@ -290,8 +333,16 @@ ansible/
 │   └── docker/
 │       └── hosts                    # Docker環境用インベントリ
 ├── playbooks/
-│   ├── bootstrap.yml                # ブートストラップPlaybook
-│   └── containers.yml               # コンテナ環境専用Playbook
+│   ├── bootstrap.yml                # 統合ブートストラップPlaybook（後方互換）
+│   ├── containers.yml               # コンテナ環境専用Playbook
+│   ├── bootstrap-wsl.yml            # 🆕 WSL環境専用Playbook
+│   ├── bootstrap-azure-vm.yml       # 🆕 Azure VM環境専用Playbook
+│   ├── bootstrap-ec2.yml            # 🆕 EC2環境専用Playbook
+│   ├── bootstrap-hyperv.yml         # 🆕 Hyper-V環境専用Playbook
+│   ├── bootstrap-baremetal.yml      # 🆕 ベアメタル環境専用Playbook
+│   ├── bootstrap-docker.yml         # 🆕 Docker環境専用Playbook
+│   └── includes/                    # 🆕 共通playbook格納ディレクトリ
+│       └── common-setup.yml         # 🆕 全環境共通セットアップ
 └── roles/
     ├── sudo/                        # sudoers設定ロール
     │   └── tasks/

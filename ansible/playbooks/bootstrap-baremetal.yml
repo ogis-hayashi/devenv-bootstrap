@@ -1,0 +1,82 @@
+---
+# ============================================================================
+# ベアメタル ブートストラップ Playbook
+# ============================================================================
+#
+# 目的:
+#   ベアメタル環境専用の初期セットアップを実行します
+#
+# 使用方法:
+#   ansible-playbook -i inventories/baremetal/hosts playbooks/bootstrap-baremetal.yml
+#
+# Dry-run:
+#   ansible-playbook -i inventories/baremetal/hosts playbooks/bootstrap-baremetal.yml --check
+#
+# 必要要件:
+#   - ベアメタル環境（物理サーバー）
+#   - inventories/baremetal/hosts が設定済み
+#
+# ============================================================================
+
+# 共通セットアップを実行
+- import_playbook: includes/common-setup.yml
+
+# ベアメタル 固有のセットアップ
+- name: ブートストラップ - ベアメタル固有の設定
+  hosts: baremetal
+  become: yes
+  gather_facts: yes
+
+  tasks:
+    - name: 環境タイプがベアメタルであることを確認
+      ansible.builtin.fail:
+        msg: "このplaybookはベアメタル環境専用です。environment_type='baremetal'が必要です。"
+      when: environment_type != 'baremetal'
+
+    - name: ベアメタル固有セットアップ開始メッセージ
+      ansible.builtin.debug:
+        msg: |
+          ================================================
+          ベアメタル固有のセットアップを開始します
+          ================================================
+          環境: {{ environment_type }}
+          ホスト: {{ ansible_facts.hostname }}
+          ================================================
+
+    - name: ベアメタル ロールを適用
+      ansible.builtin.include_role:
+        name: baremetal
+      tags:
+        - baremetal
+
+# セットアップ完了メッセージ
+- name: ベアメタル ブートストラップ完了
+  hosts: baremetal
+  gather_facts: no
+
+  tasks:
+    - name: ベアメタル セットアップ完了メッセージ
+      ansible.builtin.debug:
+        msg: |
+          ================================================
+          ベアメタル ブートストラップが完了しました！
+          ================================================
+
+          次のステップ:
+          1. シェルを再起動するか、以下を実行してLinuxbrewを有効化:
+             eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+
+             ※ chezmoi により ~/.bashrc と ~/.zshrc には既に
+                Linuxbrew の初期化コードが書き込まれています。
+                次回ログイン時から自動的に有効化されます。
+
+          2. Linuxbrew の動作確認:
+             brew --version
+
+          3. ハードウェア固有設定の確認:
+             # システム情報の表示
+             lscpu
+             lsmem
+             lsblk
+
+          ================================================

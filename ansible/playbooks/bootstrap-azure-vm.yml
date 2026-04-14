@@ -1,0 +1,83 @@
+---
+# ============================================================================
+# Azure VM ブートストラップ Playbook
+# ============================================================================
+#
+# 目的:
+#   Azure VM 環境専用の初期セットアップを実行します
+#
+# 使用方法:
+#   ansible-playbook -i inventories/azure-vm/hosts playbooks/bootstrap-azure-vm.yml
+#
+# Dry-run:
+#   ansible-playbook -i inventories/azure-vm/hosts playbooks/bootstrap-azure-vm.yml --check
+#
+# 必要要件:
+#   - Azure VM 環境（Azure Virtual Machine）
+#   - inventories/azure-vm/hosts が設定済み
+#
+# ============================================================================
+
+# 共通セットアップを実行
+- import_playbook: includes/common-setup.yml
+
+# Azure VM 固有のセットアップ
+- name: ブートストラップ - Azure VM固有の設定
+  hosts: azure_vm
+  become: yes
+  gather_facts: yes
+
+  tasks:
+    - name: 環境タイプがAzure VMであることを確認
+      ansible.builtin.fail:
+        msg: "このplaybookはAzure VM環境専用です。environment_type='azure_vm'が必要です。"
+      when: environment_type != 'azure_vm'
+
+    - name: Azure VM固有セットアップ開始メッセージ
+      ansible.builtin.debug:
+        msg: |
+          ================================================
+          Azure VM固有のセットアップを開始します
+          ================================================
+          環境: {{ environment_type }}
+          クラウドプロバイダー: {{ cloud_provider | default('azure') }}
+          ホスト: {{ ansible_facts.hostname }}
+          ================================================
+
+    - name: Azure VM ロールを適用
+      ansible.builtin.include_role:
+        name: azure_vm
+      tags:
+        - azure_vm
+
+# セットアップ完了メッセージ
+- name: Azure VM ブートストラップ完了
+  hosts: azure_vm
+  gather_facts: no
+
+  tasks:
+    - name: Azure VM セットアップ完了メッセージ
+      ansible.builtin.debug:
+        msg: |
+          ================================================
+          Azure VM ブートストラップが完了しました！
+          ================================================
+
+          次のステップ:
+          1. シェルを再起動するか、以下を実行してLinuxbrewを有効化:
+             eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+
+             ※ chezmoi により ~/.bashrc と ~/.zshrc には既に
+                Linuxbrew の初期化コードが書き込まれています。
+                次回ログイン時から自動的に有効化されます。
+
+          2. Linuxbrew の動作確認:
+             brew --version
+
+          3. Azure CLI の動作確認:
+             az --version
+
+          4. Azure にログイン:
+             az login
+
+          ================================================

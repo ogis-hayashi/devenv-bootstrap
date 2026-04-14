@@ -1,0 +1,79 @@
+---
+# ============================================================================
+# Hyper-V ブートストラップ Playbook
+# ============================================================================
+#
+# 目的:
+#   Hyper-V 環境専用の初期セットアップを実行します
+#
+# 使用方法:
+#   ansible-playbook -i inventories/hyperv/hosts playbooks/bootstrap-hyperv.yml
+#
+# Dry-run:
+#   ansible-playbook -i inventories/hyperv/hosts playbooks/bootstrap-hyperv.yml --check
+#
+# 必要要件:
+#   - Hyper-V 環境（Hyper-V Virtual Machine）
+#   - inventories/hyperv/hosts が設定済み
+#
+# ============================================================================
+
+# 共通セットアップを実行
+- import_playbook: includes/common-setup.yml
+
+# Hyper-V 固有のセットアップ
+- name: ブートストラップ - Hyper-V固有の設定
+  hosts: hyperv
+  become: yes
+  gather_facts: yes
+
+  tasks:
+    - name: 環境タイプがHyper-Vであることを確認
+      ansible.builtin.fail:
+        msg: "このplaybookはHyper-V環境専用です。environment_type='hyperv'が必要です。"
+      when: environment_type != 'hyperv'
+
+    - name: Hyper-V固有セットアップ開始メッセージ
+      ansible.builtin.debug:
+        msg: |
+          ================================================
+          Hyper-V固有のセットアップを開始します
+          ================================================
+          環境: {{ environment_type }}
+          ホスト: {{ ansible_facts.hostname }}
+          ================================================
+
+    - name: Hyper-V ロールを適用
+      ansible.builtin.include_role:
+        name: hyperv
+      tags:
+        - hyperv
+
+# セットアップ完了メッセージ
+- name: Hyper-V ブートストラップ完了
+  hosts: hyperv
+  gather_facts: no
+
+  tasks:
+    - name: Hyper-V セットアップ完了メッセージ
+      ansible.builtin.debug:
+        msg: |
+          ================================================
+          Hyper-V ブートストラップが完了しました！
+          ================================================
+
+          次のステップ:
+          1. シェルを再起動するか、以下を実行してLinuxbrewを有効化:
+             eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+
+             ※ chezmoi により ~/.bashrc と ~/.zshrc には既に
+                Linuxbrew の初期化コードが書き込まれています。
+                次回ログイン時から自動的に有効化されます。
+
+          2. Linuxbrew の動作確認:
+             brew --version
+
+          3. Hyper-V固有の設定確認:
+             # 統合サービス等の確認
+
+          ================================================

@@ -9,6 +9,93 @@
 # 使用方法:
 #   ansible-playbook -i inventories/docker/hosts playbooks/containers.yml
 #
+# Dry-run:
+#   ansible-playbook -i inventories/docker/hosts playbooks/containers.yml --check
+#
+# 必要要件:
+#   - Docker環境（コンテナ内実行）
+#   - inventories/docker/hosts が設定済み
+#
+# ============================================================================
+
+- name: コンテナ環境セットアップ
+  hosts: docker
+  become: yes
+  gather_facts: yes
+
+  tasks:
+    - name: セットアップ開始メッセージ
+      ansible.builtin.debug:
+        msg: |
+          ================================================
+          コンテナ環境セットアップを開始します
+          ================================================
+          ホスト: {{ ansible_facts.hostname }}
+          環境タイプ: {{ environment_type | default('docker') }}
+          ディストリビューション: {{ ansible_facts.distribution }} {{ ansible_facts.distribution_version }}
+          ================================================
+
+    - name: sudo 設定を適用
+      ansible.builtin.include_role:
+        name: sudo
+      tags:
+        - sudo
+        - security
+
+    - name: 共通パッケージとLinuxbrewをインストール
+      ansible.builtin.include_role:
+        name: common
+      tags:
+        - common
+        - packages
+
+    - name: 軽量ツールのセットアップ
+      ansible.builtin.include_role:
+        name: "{{ item }}"
+      loop:
+        - chezmoi
+        - starship
+        - bat
+        - delta
+        - eza
+        - xh
+      tags:
+        - tools
+        - lightweight
+
+- name: コンテナ環境セットアップ完了
+  hosts: docker
+  gather_facts: no
+
+  tasks:
+    - name: セットアップ完了メッセージ
+      ansible.builtin.debug:
+        msg: |
+          ================================================
+          コンテナ環境セットアップが完了しました！
+          ================================================
+
+          次のステップ:
+          1. シェルを再起動するか、以下を実行してLinuxbrewを有効化:
+             eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+
+          2. Linuxbrew の動作確認:
+             brew --version
+
+          3. コンテナ環境の確認:
+             cat /proc/1/cgroup | grep docker
+
+          ================================================
+# ============================================================================
+# コンテナ環境セットアップ Playbook
+# ============================================================================
+#
+# 目的:
+#   Dockerコンテナ環境専用のセットアップを実行します
+#
+# 使用方法:
+#   ansible-playbook -i inventories/docker/hosts playbooks/containers.yml
+#
 # ============================================================================
 
 - name: コンテナ環境セットアップ

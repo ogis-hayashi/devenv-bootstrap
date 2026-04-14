@@ -10,15 +10,18 @@
 - name: EC2 環境を確認
   ansible.builtin.debug:
     msg: "EC2 環境でのセットアップを実行します"
+
 - name: Linuxbrew の存在を確認
   ansible.builtin.stat:
     path: /home/linuxbrew/.linuxbrew/bin/brew
   register: linuxbrew_check
+
 - name: AWS CLI がインストール済みか確認
   ansible.builtin.command: which aws
   register: aws_check
   ignore_errors: yes
   changed_when: false
+
 - name: AWS CLI をインストール (Linuxbrew経由)
   ansible.builtin.command: /home/linuxbrew/.linuxbrew/bin/brew install awscli
   when:

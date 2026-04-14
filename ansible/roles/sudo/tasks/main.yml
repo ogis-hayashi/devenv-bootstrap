@@ -21,6 +21,7 @@
     mode: '0750'
     owner: root
     group: root
+
 - name: プロキシ環境変数を保持する設定を追加
   ansible.builtin.lineinfile:
     path: /etc/sudoers.d/90-env-keep-proxy
@@ -31,6 +32,7 @@
     group: root
     validate: '/usr/sbin/visudo -cf %s'
   register: proxy_config
+
 - name: EDITOR環境変数を保持する設定を追加
   ansible.builtin.lineinfile:
     path: /etc/sudoers.d/90-env-keep-editor
@@ -41,6 +43,7 @@
     group: root
     validate: '/usr/sbin/visudo -cf %s'
   register: editor_config
+
 - name: sudoグループにパスワードなしsudo権限を付与
   ansible.builtin.lineinfile:
     path: /etc/sudoers.d/90-sudo-nopasswd

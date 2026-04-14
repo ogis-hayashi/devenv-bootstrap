@@ -17,16 +17,19 @@
   ignore_errors: yes
   changed_when: false
   failed_when: false
+
 - name: Docker インストールをスキップ (Docker環境)
   ansible.builtin.debug:
     msg: "Docker環境のため Docker のインストールをスキップしました"
   when: environment_type | default('') == 'docker'
+
 - name: Docker インストールをスキップ (既にインストール済み)
   ansible.builtin.debug:
     msg: "Docker は既にインストールされています"
   when:
     - environment_type | default('') != 'docker'
     - docker_check.rc == 0
+
 - name: Docker 公式インストールスクリプトをダウンロード
   ansible.builtin.get_url:
     url: https://get.docker.com
@@ -35,6 +38,7 @@
   when:
     - environment_type | default('') != 'docker'
     - docker_check.rc != 0
+
 - name: Docker をインストール
   ansible.builtin.shell: /tmp/get-docker.sh
   become: yes
@@ -48,6 +52,7 @@
   when:
     - environment_type | default('') != 'docker'
     - docker_check.rc != 0
+
 - name: 現在のユーザーを docker グループに追加
   ansible.builtin.user:
     name: "{{ ansible_env.SUDO_USER | default(ansible_user_id) }}"
@@ -57,6 +62,7 @@
   when:
     - environment_type | default('') != 'docker'
     - docker_check.rc != 0
+
 - name: Docker サービスを起動して有効化
   ansible.builtin.systemd:
     name: docker
@@ -75,6 +81,7 @@
     path: "{{ lookup('env', 'HOME') }}/.certs/ZscalerRootCA.cer"
   register: zscaler_cert_stat
   become: no
+
 - name: Zscaler証明書の形式を確認（PEM形式か判定）
   ansible.builtin.shell: |
     grep -q "BEGIN CERTIFICATE" "{{ lookup('env', 'HOME') }}/.certs/ZscalerRootCA.cer"
@@ -85,6 +92,7 @@
   become: no
   failed_when: false
   changed_when: false
+
 - name: Zscaler証明書をPEM形式に変換（DER形式の場合）
   ansible.builtin.shell: |
     openssl x509 -inform DER -in "{{ lookup('env', 'HOME') }}/.certs/ZscalerRootCA.cer" \
@@ -95,6 +103,7 @@
     - zscaler_cert_format_check.rc != 0
   become: no
   changed_when: true
+
 - name: Zscaler証明書をコピー（既にPEM形式の場合）
   ansible.builtin.copy:
     src: "{{ lookup('env', 'HOME') }}/.certs/ZscalerRootCA.cer"
@@ -105,6 +114,7 @@
     - environment_type | default('') != 'docker'
     - zscaler_cert_format_check.rc == 0
   become: no
+
 - name: /etc/docker/certs.d ディレクトリを作成
   ansible.builtin.file:
     path: /etc/docker/certs.d
@@ -116,6 +126,7 @@
   when:
     - zscaler_cert_stat.stat.exists
     - environment_type | default('') != 'docker'
+
 - name: Zscaler証明書をDocker信頼ストアにコピー
   ansible.builtin.copy:
     src: /tmp/ZscalerRootCA.pem
@@ -128,6 +139,7 @@
   when:
     - zscaler_cert_stat.stat.exists
     - environment_type | default('') != 'docker'
+
 - name: /etc/docker/ca-certificates.d ディレクトリを作成
   ansible.builtin.file:
     path: /etc/docker/ca-certificates.d
@@ -139,6 +151,7 @@
   when:
     - zscaler_cert_stat.stat.exists
     - environment_type | default('') != 'docker'
+
 - name: Zscaler証明書をDockerデーモンのCAディレクトリにコピー
   ansible.builtin.copy:
     src: /tmp/ZscalerRootCA.pem
@@ -151,6 +164,7 @@
   when:
     - zscaler_cert_stat.stat.exists
     - environment_type | default('') != 'docker'
+
 - name: 一時的なPEMファイルを削除
   ansible.builtin.file:
     path: /tmp/ZscalerRootCA.pem
@@ -159,6 +173,7 @@
   when:
     - zscaler_cert_stat.stat.exists
     - environment_type | default('') != 'docker'
+
 - name: Dockerデーモンの証明書ストアを再読込
   ansible.builtin.systemd:
     name: docker
@@ -168,6 +183,7 @@
     - zscaler_cert_stat.stat.exists
     - environment_type | default('') != 'docker'
     - ansible_facts.service_mgr == 'systemd'
+
 - name: Zscaler証明書追加完了メッセージ
   ansible.builtin.debug:
     msg: |
@@ -177,6 +193,7 @@
   when:
     - zscaler_cert_stat.stat.exists
     - environment_type | default('') != 'docker'
+
 - name: Docker インストール完了メッセージ
   ansible.builtin.debug:
     msg: |
