@@ -146,6 +146,9 @@ verify_zscaler_certificate() {
     fi
     
     # システム証明書ストアの確認
+    # 注: 証明書バンドル(/etc/ssl/certs/ca-certificates.crt)内の
+    #     PEM形式証明書はBase64エンコードされているため、テキスト検索では検出不可。
+    #     システム証明書ストア内のファイル存在のみで判定する。
     local system_cert_pattern="ZscalerRootCA"
     local found_system=false
     
@@ -154,26 +157,13 @@ verify_zscaler_certificate() {
         find "$cert_store" -type f -name "*${system_cert_pattern}*" 2>/dev/null | while read -r file; do
             log_debug "  - $file"
         done
+        log_debug "  証明書バンドル: $cert_bundle"
+        log_debug "  (update-ca-certificates実行時に証明書バンドルに統合されます)"
         found_system=true
     else
         log_error "✗ システム証明書ストアに Zscaler 証明書が見つかりません"
         log_error "  期待されるパス: $cert_store/*${system_cert_pattern}*"
-        found_system=false
-    fi
-    
-    # 証明書バンドルの確認
-    if [[ -f "$cert_bundle" ]]; then
-        if grep -q "Zscaler" "$cert_bundle" 2>/dev/null; then
-            log_success "✓ 証明書バンドルに Zscaler 証明書が含まれています"
-            log_debug "  証明書バンドル: $cert_bundle"
-        else
-            log_error "✗ 証明書バンドルに Zscaler 証明書が含まれていません"
-            log_error "  証明書バンドル: $cert_bundle"
-            log_error "  証明書ストアを更新する必要があります"
-            found_system=false
-        fi
-    else
-        log_error "✗ 証明書バンドルが見つかりません: $cert_bundle"
+        log_error "  証明書を登録するには bootstrap.sh を実行してください"
         found_system=false
     fi
     
