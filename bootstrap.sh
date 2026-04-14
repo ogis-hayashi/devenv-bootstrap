@@ -356,6 +356,27 @@ main() {
                 update_certificates_platform "$zscaler_pem_cert" || {
                     log_warning "証明書の追加に失敗しましたが、処理を続行します"
                 }
+                
+                # 証明書登録後の検証 (dry-runモードではスキップ)
+                if [[ "$DRY_RUN" != "true" ]] && [[ -x "${SCRIPT_DIR}/scripts/verify-zscaler-cert.sh" ]]; then
+                    log_info ""
+                    log_info "証明書の登録を検証中..."
+                    
+                    local verify_flags=""
+                    if [[ "$VERBOSE" == "true" ]]; then
+                        verify_flags="--verbose"
+                    fi
+                    
+                    if "${SCRIPT_DIR}/scripts/verify-zscaler-cert.sh" $verify_flags; then
+                        log_success "証明書の検証が成功しました"
+                    else
+                        log_warning "証明書の検証に失敗しましたが、処理を続行します"
+                        log_warning "手動で確認する場合: ${SCRIPT_DIR}/scripts/verify-zscaler-cert.sh --verbose"
+                    fi
+                    log_info ""
+                elif [[ "$DRY_RUN" == "true" ]]; then
+                    log_debug "[dry-run] 証明書検証スクリプトの実行をスキップします"
+                fi
             else
                 log_debug "変換済み証明書ファイルが見つかりません: $zscaler_pem_cert"
             fi

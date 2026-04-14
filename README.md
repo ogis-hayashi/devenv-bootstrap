@@ -34,7 +34,10 @@ mkdir -p ~/.certs
 cp /path/to/ZscalerRootCA.cer ~/.certs/
 
 # 1. Ansibleインストール用の仮想環境をセットアップ
-# Zscaler証明書が存在する場合、自動的に検出・変換・適用されます
+# Zscaler証明書が存在する場合:
+#   - 自動的に検出・変換・適用されます
+#   - 登録後、自動的に検証スクリプトが実行されます
+#   - 検証結果がログに表示されます
 ./bootstrap.sh
 
 # 2. 仮想環境を有効化
@@ -136,15 +139,68 @@ use_chezmoi_for_dotfiles: false  # デフォルト: Ansibleで管理
 
 ## 📖 使用方法
 
-### Zscalerルート証明書の自動インポート
+### 🔐 Zscaler証明書のセットアップ
 
-`certs` ディレクトリ内に `zscaler*root*.pem` または `zscaler*root*.crt`（大文字小文字無視）を配置すると、スクリプト実行時に自動で各ディストリビューションの証明書ストアへインポートされます。
+Zscaler環境で作業する場合、ルート証明書を配置することで自動的にシステム証明書ストアに登録できます。
 
-証明書インポート後、自動的に `openssl s_client -connect www.google.com:443` で接続テストが行われ、失敗した場合はエラー終了します。
+#### 証明書の配置
 
-**べき等性**: 既に同一内容の証明書がインストール済みの場合はスキップされます。
+```bash
+# 証明書を配置するディレクトリを作成
+mkdir -p ~/.certs
 
-**dry-run**: 実際のインポートやテストは行われず、予定コマンドのみ表示されます。
+# 証明書ファイルをコピー（以下のいずれかの形式に対応）
+# 1. テキスト情報 + PEMブロック（openssl x509 -text 出力など）
+# 2. 純粋なPEM形式（-----BEGIN CERTIFICATE-----から始まる）
+# 3. DERバイナリ形式
+cp /path/to/ZscalerRootCA.cer ~/.certs/
+```
+
+#### 自動処理の内容
+
+`bootstrap.sh` を実行すると、以下の処理が自動的に行われます：
+
+1. **証明書の検出**: `~/.certs/ZscalerRootCA.cer` の存在を確認
+2. **形式の判定と変換**:
+   - テキスト情報 + PEM: PEMブロックのみを抽出
+   - 純粋なPEM: そのまま使用（べき等性）
+   - DER形式: `openssl` で PEM 形式に変換
+3. **システム証明書ストアへの追加**:
+   - Ubuntu/Debian: `/usr/local/share/ca-certificates/` に配置し `update-ca-certificates` 実行
+   - RHEL/Fedora: `/etc/pki/ca-trust/source/anchors/` に配置し `update-ca-trust` 実行
+   - Arch Linux: `/etc/ca-certificates/trust-source/anchors/` に配置し `trust extract-compat` 実行
+4. **登録の自動検証**: 証明書ストアへの追加後、自動的に検証スクリプトが実行されます
+   - システム証明書ストアへの登録を確認
+   - 証明書バンドルへの組み込みを確認
+   - 証明書の有効性を検証
+   - 検証結果をログに表示
+5. **pip での証明書適用**: Ansible インストール時に証明書を自動適用
+
+**注意**: 検証が失敗しても bootstrap.sh 全体は失敗しません（警告のみ）。手動で確認する場合は `./scripts/verify-zscaler-cert.sh --verbose` を実行してください。
+
+#### 証明書の検証
+
+bootstrap.sh 実行後、証明書が正しく登録されているかを手動で確認することもできます：
+
+```bash
+# 証明書の登録状況を確認
+./scripts/verify-zscaler-cert.sh
+
+# 詳細な情報を表示
+./scripts/verify-zscaler-cert.sh --verbose
+```
+
+**検証内容**:
+- ソース証明書ファイルの存在確認 (`~/.certs/ZscalerRootCA.{cer,pem}`)
+- システム証明書ストアへの登録確認
+- 証明書バンドルへの組み込み確認
+- 証明書の有効性検証（`openssl` による）
+
+**終了コード**:
+- `0`: 証明書は正しく登録されています
+- `1`: 証明書が未登録、または問題があります
+- `2`: 証明書が無効です
+- `3`: サポート外のプラットフォーム
 
 ### 基本的な使用方法
 
@@ -179,6 +235,7 @@ use_chezmoi_for_dotfiles: false  # デフォルト: Ansibleで管理
 - **Python**: バージョン 3.8 以上
 - **pip**: Python パッケージマネージャー
 - **venv**: Python 仮想環境モジュール
+- **openssl**: 証明書変換に必要（Zscaler環境の場合）
 - **非rootユーザー**: セキュリティのため、rootでの実行は禁止されています
 
 ### ディストリビューション別の依存関係インストール
@@ -186,17 +243,17 @@ use_chezmoi_for_dotfiles: false  # デフォルト: Ansibleで管理
 #### Ubuntu/Debian
 ```bash
 sudo apt update
-sudo apt install -y python3 python3-pip python3-venv build-essential libssl-dev libffi-dev
+sudo apt install -y python3 python3-pip python3-venv openssl build-essential libssl-dev libffi-dev
 ```
 
 #### RHEL/CentOS/Fedora
 ```bash
-sudo dnf install -y python3 python3-pip python3-virtualenv gcc openssl-devel libffi-devel
+sudo dnf install -y python3 python3-pip python3-virtualenv openssl gcc openssl-devel libffi-devel
 ```
 
 #### Arch Linux
 ```bash
-sudo pacman -Sy python python-pip base-devel openssl libffi
+sudo pacman -Sy python python-pip openssl base-devel libffi
 ```
 
 ## 🎯 インストール後の使用方法
@@ -280,12 +337,82 @@ ansible-playbook -i inventories/docker/hosts playbooks/containers.yml
 
 ## 🔍 トラブルシューティング
 
-### Zscalerルート証明書のインポート・接続テストで失敗する
+### Zscaler証明書関連の問題
 
-- `certs` ディレクトリに配置した証明書ファイル名や内容を確認してください（例: `ZscalerRootCertificate.pem`）。
-- スクリプト実行時に `openssl s_client` の接続テストが失敗した場合、証明書ストアへの反映や証明書内容に問題がある可能性があります。
-- エラーメッセージを確認し、必要に応じて証明書を修正してください。
-- dry-runモードではテストは実行されません。
+#### 証明書の変換に失敗する
+
+```bash
+# エラー: "証明書の変換に失敗しました"
+# 原因: 証明書ファイルの形式が不明、または破損している
+
+# 確認方法:
+# 1. ファイルの内容を確認
+cat ~/.certs/ZscalerRootCA.cer
+
+# 2. PEMブロックが含まれているか確認
+grep "BEGIN CERTIFICATE" ~/.certs/ZscalerRootCA.cer
+
+# 3. openssl で確認
+openssl x509 -in ~/.certs/ZscalerRootCA.cer -text -noout
+
+# DER形式の場合:
+openssl x509 -inform DER -in ~/.certs/ZscalerRootCA.cer -text -noout
+
+# 解決方法:
+# - 正しい証明書ファイルを再取得
+# - PEM形式で保存されていることを確認
+```
+
+#### 証明書が登録されているか確認したい
+
+```bash
+# 検証スクリプトを実行
+./scripts/verify-zscaler-cert.sh --verbose
+
+# 手動での確認方法:
+# Ubuntu/Debian:
+grep "Zscaler" /etc/ssl/certs/ca-certificates.crt
+
+# RHEL/Fedora:
+grep "Zscaler" /etc/pki/tls/certs/ca-bundle.crt
+
+# Arch Linux:
+grep "Zscaler" /etc/ssl/certs/ca-certificates.crt
+```
+
+#### SSL証明書検証エラー
+
+```bash
+# エラー: "SSL: CERTIFICATE_VERIFY_FAILED"
+# 原因: Zscaler証明書がシステム証明書ストアに登録されていない
+
+# 解決手順:
+# 1. 証明書を配置
+mkdir -p ~/.certs
+cp /path/to/ZscalerRootCA.cer ~/.certs/
+
+# 2. bootstrap.sh を再実行
+./bootstrap.sh
+
+# 3. 登録を確認
+./scripts/verify-zscaler-cert.sh
+```
+
+#### opensslコマンドが見つからない
+
+```bash
+# エラー: "opensslコマンドが見つかりません"
+# 原因: openssl パッケージがインストールされていない
+
+# Ubuntu/Debian:
+sudo apt update && sudo apt install -y openssl
+
+# RHEL/Fedora:
+sudo dnf install -y openssl
+
+# Arch Linux:
+sudo pacman -Sy openssl
+```
 
 ### Python バージョンが古い
 

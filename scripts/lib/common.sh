@@ -33,7 +33,11 @@ set -Eeuo pipefail
 # グローバル変数と定数の定義
 # ============================================================================
 
-readonly SCRIPT_NAME="${SCRIPT_NAME:-$(basename "${BASH_SOURCE[0]}")}"
+# SCRIPT_NAME が未定義の場合のみ設定（他のスクリプトから source される場合を考慮）
+if [[ -z "${SCRIPT_NAME:-}" ]]; then
+    readonly SCRIPT_NAME="$(basename "${BASH_SOURCE[0]}")"
+fi
+
 readonly TIMESTAMP="$(date +'%Y-%m-%d %H:%M:%S')"
 
 # 設定 (未設定の場合のデフォルト値)
@@ -237,7 +241,13 @@ detect_package_manager() {
 # ============================================================================
 
 convert_certificate_to_pem() {
-    # 証明書をPEM形式に変換（DER形式の場合のみ変換）
+    # 証明書をPEM形式に変換
+    # 
+    # サポートする入力形式:
+    #   1. テキスト情報 + PEM ブロック (例: openssl x509 -text 出力)
+    #   2. 純粋な PEM 形式 (-----BEGIN ... から -----END ... のみ)
+    #   3. DER バイナリ形式
+    #
     # 引数: $1 = 入力証明書ファイルパス
     # 戻り値: 変換後のPEM形式ファイルパス（標準出力）、エラー時は空文字列
 
@@ -248,6 +258,8 @@ convert_certificate_to_pem() {
 
     local input_cert="$1"
     local output_cert=""
+    local basename_no_ext="${input_cert%.*}"
+    output_cert="${basename_no_ext}.pem"
 
     # 入力ファイルの存在確認
     if [[ ! -f "$input_cert" ]]; then
@@ -261,46 +273,66 @@ convert_certificate_to_pem() {
         return 1
     fi
 
-    # 証明書形式を判定（PEMかDERか）
-    local is_pem=false
-    if head -n1 "$input_cert" 2>/dev/null | grep -q "^-----BEGIN"; then
-        is_pem=true
-        log_debug "証明書は既にPEM形式です: $input_cert"
-    else
-        log_debug "証明書はDER形式の可能性があります: $input_cert"
-    fi
+    log_debug "証明書形式を確認中: $input_cert"
 
-    # PEM形式の場合はそのまま使用、DER形式の場合は変換
-    if [[ "$is_pem" == "true" ]]; then
-        # 拡張子を.crtに変更したパスを生成
-        local basename_no_ext="${input_cert%.*}"
-        output_cert="${basename_no_ext}.crt"
+    # PEM形式かどうかを判定（BEGIN CERTIFICATE行の存在）
+    if grep -q "BEGIN CERTIFICATE" "$input_cert" 2>/dev/null; then
+        log_debug "PEMブロックを検出しました"
         
-        # 既に.crtまたは.pemの場合はそのまま使用
-        if [[ "$input_cert" == *.crt ]] || [[ "$input_cert" == *.pem ]]; then
-            output_cert="$input_cert"
-            log_debug "PEM形式の証明書をそのまま使用: $output_cert"
-        else
-            # .cerなど他の拡張子の場合は.crtにコピー
-            if [[ "$DRY_RUN" == "true" ]]; then
-                log_debug "[dry-run] cp \"$input_cert\" \"$output_cert\""
+        # PEMブロックのみを含む行数をカウント
+        local pem_only_lines
+        pem_only_lines=$(sed -n '/-----BEGIN CERTIFICATE-----/,/-----END CERTIFICATE-----/p' "$input_cert" | wc -l)
+        local total_lines
+        total_lines=$(wc -l < "$input_cert")
+        
+        if [[ $pem_only_lines -eq $total_lines ]]; then
+            # 純粋なPEM形式（余分なテキストなし）
+            log_debug "純粋なPEM形式の証明書です"
+            
+            # 既に .pem 拡張子の場合はそのまま使用（べき等性）
+            if [[ "$input_cert" == *.pem ]]; then
+                output_cert="$input_cert"
+                log_debug "PEM形式の証明書をそのまま使用: $output_cert"
             else
-                cp "$input_cert" "$output_cert" || {
-                    log_error "PEM証明書のコピーに失敗しました"
+                # 別の拡張子の場合は .pem にコピー
+                if [[ "$DRY_RUN" == "true" ]]; then
+                    echo "[dry-run] cp \"$input_cert\" \"$output_cert\""
+                else
+                    cp "$input_cert" "$output_cert" || {
+                        log_error "PEM証明書のコピーに失敗しました"
+                        return 1
+                    }
+                    log_success "PEM証明書を .pem 形式でコピーしました: $output_cert"
+                fi
+            fi
+        else
+            # テキスト情報 + PEM ブロックの形式（openssl x509 -text 出力など）
+            log_info "テキスト情報を含むPEM証明書を検出 - PEMブロックのみを抽出中..."
+            
+            if [[ "$DRY_RUN" == "true" ]]; then
+                echo "[dry-run] sed -n '/-----BEGIN CERTIFICATE-----/,/-----END CERTIFICATE-----/p' \"$input_cert\" > \"$output_cert\""
+            else
+                # PEMブロックのみを抽出
+                if sed -n '/-----BEGIN CERTIFICATE-----/,/-----END CERTIFICATE-----/p' "$input_cert" > "$output_cert"; then
+                    # 抽出結果が空でないことを確認
+                    if [[ ! -s "$output_cert" ]]; then
+                        log_error "PEMブロックの抽出に失敗しました（出力ファイルが空です）"
+                        rm -f "$output_cert"
+                        return 1
+                    fi
+                    log_success "PEMブロックを抽出しました: $output_cert"
+                else
+                    log_error "PEMブロックの抽出に失敗しました"
                     return 1
-                }
-                log_success "PEM証明書を.crt形式でコピーしました: $output_cert"
+                fi
             fi
         fi
     else
-        # DER形式をPEM形式に変換
-        local basename_no_ext="${input_cert%.*}"
-        output_cert="${basename_no_ext}.crt"
-        
-        log_info "DER形式からPEM形式に変換中: $(basename "$input_cert") → $(basename "$output_cert")"
+        # PEMブロックが見つからない - DER形式として変換を試みる
+        log_info "DER形式と判断 - PEM形式に変換中: $(basename "$input_cert") → $(basename "$output_cert")"
         
         if [[ "$DRY_RUN" == "true" ]]; then
-            log_debug "[dry-run] openssl x509 -inform DER -in \"$input_cert\" -out \"$output_cert\""
+            echo "[dry-run] openssl x509 -inform DER -in \"$input_cert\" -out \"$output_cert\""
         else
             if openssl x509 -inform DER -in "$input_cert" -out "$output_cert" 2>/dev/null; then
                 log_success "DER形式からPEM形式への変換が完了しました: $output_cert"
@@ -346,6 +378,56 @@ prepare_zscaler_certificate() {
     fi
     
     return 0
+}
+
+# ============================================================================
+# 証明書パス取得
+# ============================================================================
+
+get_cert_bundle_path() {
+    # ディストリビューションに応じた証明書バンドルのパスを取得
+    # 引数: $1 = ディストリビューション名
+    # 戻り値: 証明書バンドルファイルパス (存在しない場合は空文字列)
+    
+    local distro="$1"
+    
+    case "$distro" in
+        ubuntu|debian|linuxmint|pop)
+            echo "/etc/ssl/certs/ca-certificates.crt"
+            ;;
+        fedora|rhel|centos|rocky|almalinux)
+            echo "/etc/pki/tls/certs/ca-bundle.crt"
+            ;;
+        arch|manjaro|endeavouros)
+            echo "/etc/ssl/certs/ca-certificates.crt"
+            ;;
+        *)
+            echo ""
+            ;;
+    esac
+}
+
+get_cert_store_path() {
+    # ディストリビューションに応じた証明書ストアのパスを取得
+    # 引数: $1 = ディストリビューション名
+    # 戻り値: 証明書ストアディレクトリパス (存在しない場合は空文字列)
+    
+    local distro="$1"
+    
+    case "$distro" in
+        ubuntu|debian|linuxmint|pop)
+            echo "/usr/local/share/ca-certificates"
+            ;;
+        fedora|rhel|centos|rocky|almalinux)
+            echo "/etc/pki/ca-trust/source/anchors"
+            ;;
+        arch|manjaro|endeavouros)
+            echo "/etc/ca-certificates/trust-source/anchors"
+            ;;
+        *)
+            echo ""
+            ;;
+    esac
 }
 
 # ============================================================================
@@ -460,6 +542,11 @@ check_dependencies() {
         missing_deps+=("python3-venv")
     fi
 
+    # opensslをチェック（証明書変換に必要）
+    if ! command -v openssl >/dev/null 2>&1; then
+        missing_deps+=("openssl")
+    fi
+
     if [[ ${#missing_deps[@]} -gt 0 ]]; then
         log_error "必要な依存関係が不足しています: ${missing_deps[*]}"
         log_error "パッケージマネージャーを使用してインストールしてください"
@@ -471,16 +558,16 @@ check_dependencies() {
 
         case "$pkg_mgr" in
             apt)
-                log_error "インストール方法: sudo apt update && sudo apt install -y python3 python3-pip python3-venv"
+                log_error "インストール方法: sudo apt update && sudo apt install -y python3 python3-pip python3-venv openssl"
                 ;;
             dnf)
-                log_error "インストール方法: sudo dnf install -y python3 python3-pip python3-virtualenv"
+                log_error "インストール方法: sudo dnf install -y python3 python3-pip python3-virtualenv openssl"
                 ;;
             yum)
-                log_error "インストール方法: sudo yum install -y python3 python3-pip python3-virtualenv"
+                log_error "インストール方法: sudo yum install -y python3 python3-pip python3-virtualenv openssl"
                 ;;
             pacman)
-                log_error "インストール方法: sudo pacman -Sy python python-pip"
+                log_error "インストール方法: sudo pacman -Syu --needed python python-pip openssl"
                 ;;
             *)
                 log_error "以下をインストールしてください: python3, python3-pip, python3-venv"
