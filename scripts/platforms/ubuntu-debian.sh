@@ -85,6 +85,10 @@ update_certificates_platform() {
     if [[ $need_update -eq 1 ]]; then
         log_info "証明書ストアを更新中 (Ubuntu/Debian系)..."
         sudo update-ca-certificates
+        
+        # ファイルシステムをフラッシュして証明書バンドルの更新を確実に反映
+        sync
+        
         log_success "証明書ストアを更新しました (Ubuntu/Debian系)"
     else
         log_info "証明書バンドルは既に最新です"
