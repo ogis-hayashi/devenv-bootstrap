@@ -45,10 +45,18 @@ update_certificates_platform() {
     fi
 
     local cert_file="$1"
-    local dest="/usr/local/share/ca-certificates/$(basename "$cert_file")"
+    
+    # Ubuntu/Debianでは .crt 拡張子が必要
+    # ソースファイルの拡張子に関わらず、コピー先は .crt に統一
+    local cert_basename
+    cert_basename="$(basename "$cert_file" .pem)"
+    cert_basename="$(basename "$cert_basename" .crt)"
+    cert_basename="$(basename "$cert_basename" .cer)"
+    local dest="/usr/local/share/ca-certificates/${cert_basename}.crt"
     local need_update=0
 
     log_info "証明書を追加中 (Ubuntu/Debian系): $cert_file"
+    log_debug "コピー先: $dest (.crt 拡張子を使用)"
 
     if [[ "$DRY_RUN" == "true" ]]; then
         echo "[dry-run] sudo cp \"$cert_file\" \"$dest\""
