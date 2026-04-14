@@ -13,21 +13,18 @@
 #   - uv: https://github.com/astral-sh/uv
 #
 
-- name: uv がインストール済みか確認
-  ansible.builtin.command: /home/linuxbrew/.linuxbrew/bin/brew list uv
-  register: uv_check
-  ignore_errors: yes
-  changed_when: false
-  failed_when: false
-  become: no
-  environment:
-    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_facts.env.PATH }}"
 - name: uv をインストール
-  ansible.builtin.command: /home/linuxbrew/.linuxbrew/bin/brew install uv
-  when: uv_check.rc != 0
+  community.general.homebrew:
+    name: uv
+    state: present
+    path: /home/linuxbrew/.linuxbrew/bin/brew
   become: no
   environment:
     PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_facts.env.PATH }}"
+    HOMEBREW_NO_VERIFY_ATTESTATIONS: "1"
+    HOMEBREW_CURL_RETRIES: "3"
+    CURL_CA_BUNDLE: "{{ zscaler_ca_bundle_path | default('') }}"
+
 - name: uv のバージョンを確認
   ansible.builtin.command: /home/linuxbrew/.linuxbrew/bin/uv --version
   register: uv_version

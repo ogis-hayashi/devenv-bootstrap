@@ -16,6 +16,9 @@
 ### Git設定
 - `~/.gitconfig` - Git全体設定（delta、エイリアス、ユーザー情報）
 
+### curl設定
+- `~/.curlrc` - curl全体設定（Zscaler証明書パス）
+
 ### SSH設定
 - `~/.ssh/config` - SSH クライアント設定（接続設定、ホスト別設定、セキュリティ設定）
 
@@ -108,6 +111,7 @@ dotfiles/
 ├── dot_bashrc.tmpl             # ~/.bashrc
 ├── dot_zshrc.tmpl              # ~/.zshrc
 ├── dot_gitconfig.tmpl          # ~/.gitconfig
+├── dot_curlrc.tmpl             # ~/.curlrc（Zscaler証明書設定）
 ├── dot_tmux.conf               # ~/.tmux.conf
 ├── dot_ssh/
 │   └── config.tmpl             # ~/.ssh/config
@@ -217,3 +221,65 @@ SSH 接続設定を一元管理：
 - 機密情報（APIキー、パスワード）は**絶対に**コミットしないでください
 - 必要な場合は `.chezmoiignore` で除外するか、暗号化機能を使用してください
 - `.gitconfig` のユーザー情報はテンプレート変数を使用してください
+
+## 🔐 Zscaler環境での使用
+
+Zscaler等のSSLインスペクションを使用する企業環境では、curl等のHTTPSツールが証明書エラーで失敗することがあります。  
+このdotfilesリポジトリには、Zscaler証明書を自動的に設定する `.curlrc` が含まれています。
+
+### セットアップ手順
+
+1. **Zscaler証明書ファイルを配置**
+   ```bash
+   mkdir -p ~/.certs
+   # Windows環境から証明書をコピー（例）
+   cp /mnt/c/Users/YourName/Documents/ZscalerRootCA.cer ~/.certs/
+   ```
+
+2. **bootstrap.sh を実行して証明書を変換・登録**
+   ```bash
+   cd /path/to/devenv-bootstrap
+   ./bootstrap.sh
+   ```
+   
+   このスクリプトが以下を実行します：
+   - `.cer` 形式を `.pem` 形式に変換
+   - システム証明書ストアに登録
+   - `~/.certs/ZscalerRootCA.pem` を作成
+
+3. **dotfilesを適用（chezmoiで自動）**
+   ```bash
+   chezmoi apply
+   ```
+   
+   これにより `~/.curlrc` が作成され、以下の設定が適用されます：
+   ```
+   cacert = ~/.certs/ZscalerRootCA.pem
+   ```
+
+### 動作確認
+
+```bash
+# curl でHTTPSサイトにアクセス
+curl -I https://github.com
+
+# 証明書検証が正常に動作すれば成功
+# HTTP/2 200 のレスポンスが返ります
+```
+
+### トラブルシューティング
+
+証明書エラーが発生する場合：
+
+```bash
+# 証明書の確認
+ls -la ~/.certs/ZscalerRootCA.pem
+
+# .curlrc の確認
+cat ~/.curlrc
+
+# システム証明書ストアの確認
+./scripts/verify-zscaler-cert.sh --verbose
+```
+
+参考: [Zscaler証明書検証スクリプト](../scripts/verify-zscaler-cert.sh)

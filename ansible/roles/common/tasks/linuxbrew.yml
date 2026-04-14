@@ -17,9 +17,7 @@
     name:
       - build-essential
       - procps
-      - curl
       - file
-      - git
     state: present
     update_cache: yes
   when: ansible_facts['os_family'] == "Debian"
@@ -32,9 +30,7 @@
       - gcc-c++
       - make
       - procps-ng
-      - curl
       - file
-      - git
     state: present
   when: ansible_facts['os_family'] == "RedHat"
   become: yes
@@ -44,9 +40,7 @@
     name:
       - base-devel
       - procps-ng
-      - curl
       - file
-      - git
     state: present
   when: ansible_facts['os_family'] == "Archlinux"
   become: yes
@@ -61,6 +55,9 @@
     url: https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh
     dest: /tmp/brew-install.sh
     mode: '0755'
+  environment:
+    # Zscaler 証明書が存在する場合は設定
+    CURL_CA_BUNDLE: "{{ zscaler_ca_bundle_path | default('') }}"
   when: not brew_installed.stat.exists
 
 - name: Linuxbrew をインストール
@@ -70,6 +67,8 @@
     creates: /home/linuxbrew/.linuxbrew/bin/brew
   environment:
     CI: "true"
+    # Zscaler 証明書が存在する場合は設定
+    CURL_CA_BUNDLE: "{{ zscaler_ca_bundle_path | default('') }}"
   become: no
   when: not brew_installed.stat.exists
 

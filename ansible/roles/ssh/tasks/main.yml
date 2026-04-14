@@ -6,9 +6,45 @@
 # 目的:
 #   SSH サーバーの設定を行います
 #
+# 注意事項:
+#   - WSL環境とDockerコンテナではスキップします（SSH不要）
+#   - Azure VM、EC2では通常デフォルトでインストール済みです
+#
+
+- name: OpenSSH サーバーのインストールをスキップ (WSL / Docker環境)
+  ansible.builtin.debug:
+    msg: "WSL / Docker環境のため OpenSSH サーバーのインストールをスキップしました"
+  when: environment_type | default('') in ['wsl', 'docker']
+
+- name: OpenSSH サーバーのインストール状況を確認
+  ansible.builtin.package_facts:
+    manager: auto
+  when: environment_type | default('') not in ['wsl', 'docker']
+
+- name: OpenSSH サーバーが既にインストール済みか表示
+  ansible.builtin.debug:
+    msg: "OpenSSH サーバーは既にインストール済みです（バージョン: {{ ansible_facts.packages['openssh-server'][0].version | default('不明') }}）"
+  when:
+    - environment_type | default('') not in ['wsl', 'docker']
+    - "'openssh-server' in ansible_facts.packages"
 
 - name: OpenSSH サーバーをインストール
   ansible.builtin.package:
     name: openssh-server
     state: present
   become: yes
+  when:
+    - environment_type | default('') not in ['wsl', 'docker']
+    - "'openssh-server' not in ansible_facts.packages"
+
+- name: SSH サービスを起動して有効化
+  ansible.builtin.systemd:
+    name: ssh
+    state: started
+    enabled: yes
+  become: yes
+  when:
+    - ansible_facts.service_mgr == 'systemd'
+    - environment_type | default('') not in ['wsl', 'docker']
+  register: ssh_service_start
+  failed_when: false

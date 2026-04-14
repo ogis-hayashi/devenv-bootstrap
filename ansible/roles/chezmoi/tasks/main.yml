@@ -23,6 +23,9 @@
   become: no
   environment:
     PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_facts.env.PATH }}"
+    HOMEBREW_NO_VERIFY_ATTESTATIONS: "1"
+    HOMEBREW_CURL_RETRIES: "3"
+    CURL_CA_BUNDLE: "{{ zscaler_ca_bundle_path | default('') }}"
 
 - name: chezmoi のバージョンを確認
   ansible.builtin.command: /home/linuxbrew/.linuxbrew/bin/chezmoi --version
@@ -35,7 +38,7 @@
 
 - name: dotfiles ディレクトリの存在確認
   ansible.builtin.stat:
-    path: "{{ playbook_dir }}/../../dotfiles"
+    path: "{{ inventory_dir }}/../../dotfiles"
   register: dotfiles_dir
   become: no
   delegate_to: localhost
@@ -49,7 +52,7 @@
 - name: chezmoi を初期化（dotfiles ディレクトリから）
   ansible.builtin.command: >
     /home/linuxbrew/.linuxbrew/bin/chezmoi init
-    --source={{ playbook_dir }}/../../dotfiles
+    --source={{ inventory_dir }}/../../dotfiles
   become: no
   environment:
     PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_facts.env.PATH }}"
