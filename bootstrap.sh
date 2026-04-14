@@ -258,8 +258,39 @@ install_via_pip() {
         exit 1
     }
 
-    # 仮想環境が存在しない場合は作成
+    # 仮想環境の健全性をチェック
+    local venv_needs_creation=false
+    
     if [[ ! -d "$VENV_PATH" ]]; then
+        log_info "Python仮想環境が見つかりません。作成します..."
+        venv_needs_creation=true
+    else
+        log_info "仮想環境は既に存在します: $VENV_PATH"
+        
+        # 既存の仮想環境の健全性をチェック
+        log_debug "仮想環境の健全性を確認中..."
+        
+        if [[ ! -f "$VENV_PATH/bin/python" ]] || [[ ! -f "$VENV_PATH/bin/pip" ]]; then
+            log_warning "仮想環境が壊れています (必須ファイルが不足)"
+            log_warning "仮想環境を削除して再作成します: $VENV_PATH"
+            
+            if [[ "$DRY_RUN" == "true" ]]; then
+                echo "[dry-run] 実行予定: rm -rf \"$VENV_PATH\""
+            else
+                rm -rf "$VENV_PATH" || {
+                    log_error "既存の仮想環境の削除に失敗しました"
+                    exit 1
+                }
+            fi
+            
+            venv_needs_creation=true
+        else
+            log_debug "仮想環境は正常です"
+        fi
+    fi
+
+    # 仮想環境を作成 (必要な場合のみ)
+    if [[ "$venv_needs_creation" == "true" ]]; then
         log_info "Python仮想環境を作成中..."
 
         if [[ "$DRY_RUN" == "true" ]]; then
@@ -271,16 +302,8 @@ install_via_pip() {
             }
             log_success "仮想環境を作成しました"
         fi
-    else
-        log_info "仮想環境は既に存在します: $VENV_PATH"
     fi
 
-    # 仮想環境のpipパスを検証
-    if [[ "$DRY_RUN" != "true" && ! -f "$VENV_PATH/bin/pip" ]]; then
-        log_error "仮想環境のpipが見つかりません: $VENV_PATH/bin/pip"
-        log_error "仮想環境が正しく作成されていない可能性があります"
-        exit 1
-    fi
     log_debug "使用するpipパス: $VENV_PATH/bin/pip"
 
     # 仮想環境内のpipをアップグレード
