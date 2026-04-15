@@ -49,6 +49,14 @@
       tags:
         - hyperv
 
+    - name: Azure CLI ロールを適用
+      ansible.builtin.include_role:
+        name: azure_cli
+      tags:
+        - azure_cli
+        - azure
+        - tools
+
 # セットアップ完了メッセージ
 - name: Hyper-V ブートストラップ完了
   hosts: hyperv
