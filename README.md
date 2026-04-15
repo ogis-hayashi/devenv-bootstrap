@@ -144,17 +144,17 @@ chezmoi apply -v
 
 ### 切り替え方法
 
-`ansible/group_vars/all.yml` で管理方法を切り替え可能：
+`ansible/group_vars/all.yml` で dotfiles の自動適用を制御可能：
 
 ```yaml
-# chezmoi で dotfiles を管理する場合は true に設定
-# true の場合、Ansible は設定ファイルを配置しません
-use_chezmoi_for_dotfiles: false  # デフォルト: Ansibleで管理
+# このリポジトリの dotfiles を chezmoi で自動適用する場合は true に設定
+# false の場合、chezmoi ツールはインストールされますが dotfiles の初期化・適用はスキップされます
+chezmoi_auto_apply: true  # デフォルト: 自動適用する
 ```
 
-**推奨設定**: `use_chezmoi_for_dotfiles: true`
+**推奨設定**: `chezmoi_auto_apply: true`（デフォルト）
 
-これにより、Ansibleはパッケージインストールのみを行い、設定ファイルはchezmoiで管理されます。
+これにより、chezmoi のインストールと同時に dotfiles ディレクトリから設定が自動的に適用されます。
 
 ## 📖 使用方法
 

@@ -9,8 +9,8 @@
 #
 # ============================================================================
 
-{{- $name := promptStringOnce . "name" "氏名を入力してください" -}}
-{{- $email := promptStringOnce . "email" "メールアドレスを入力してください" -}}
+{{- $name := promptStringOnce . "name" "氏名(Git)を入力してください" -}}
+{{- $email := promptStringOnce . "email" "メールアドレス(Git)を入力してください" -}}
 {{- $github_user := promptStringOnce . "github_user" "GitHubユーザー名を入力してください (オプション)" -}}
 
 [data]

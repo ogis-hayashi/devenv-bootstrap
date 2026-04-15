@@ -38,7 +38,7 @@
 
 - name: dotfiles ディレクトリの存在確認
   ansible.builtin.stat:
-    path: "{{ inventory_dir }}/../../dotfiles"
+    path: "{{ inventory_dir }}/../../../dotfiles"
   register: dotfiles_dir
   become: no
   delegate_to: localhost
@@ -49,10 +49,10 @@
   register: chezmoi_initialized
   become: no
 
-- name: chezmoi を初期化（dotfiles ディレクトリから）
+- name: chezmoi を初期化（初回）
   ansible.builtin.command: >
     /home/linuxbrew/.linuxbrew/bin/chezmoi init
-    --source={{ inventory_dir }}/../../dotfiles
+    --source={{ inventory_dir }}/../../../dotfiles
   become: no
   environment:
     PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_facts.env.PATH }}"
@@ -60,6 +60,21 @@
     - dotfiles_dir.stat.exists
     - not chezmoi_initialized.stat.exists
     - chezmoi_auto_apply | default(true)
+  changed_when: true
+
+- name: chezmoi を再初期化（設定ファイルテンプレート更新時）
+  ansible.builtin.command: >
+    /home/linuxbrew/.linuxbrew/bin/chezmoi init
+    --source={{ inventory_dir }}/../../../dotfiles
+    --force
+  become: no
+  environment:
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_facts.env.PATH }}"
+  when:
+    - dotfiles_dir.stat.exists
+    - chezmoi_initialized.stat.exists
+    - chezmoi_auto_apply | default(true)
+  changed_when: false  # 設定ファイルのみ更新、changed扱いしない
 
 - name: chezmoi で dotfiles を適用
   ansible.builtin.command: /home/linuxbrew/.linuxbrew/bin/chezmoi apply --verbose
