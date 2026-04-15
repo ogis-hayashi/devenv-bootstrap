@@ -44,6 +44,16 @@
    # /home/linuxbrew/.linuxbrew/bin/chezmoi
    ```
 
+3. **Nerd Fontのインストールと設定**
+   - Starship、Powerline、Tmuxなどのツールが、プロンプトやステータスバーでアイコンを正しく表示するために必要です
+   - 推奨フォント:
+     - [Hack Nerd Font](https://www.nerdfonts.com/)
+     - [JetBrains Mono Nerd Font](https://www.nerdfonts.com/)
+     - [Fira Code Nerd Font](https://www.nerdfonts.com/)
+   - インストール方法: [Nerd Fonts公式サイト](https://www.nerdfonts.com/) を参照
+   - インストール後、ターミナルエミュレータの設定でNerd Fontを選択してください
+   - ⚠️ アイコンが正しく表示されない場合は、フォント設定を確認してください
+
 ### 初回セットアップ
 
 #### 1. このリポジトリからdotfilesを初期化
