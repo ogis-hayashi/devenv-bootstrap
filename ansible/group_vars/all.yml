@@ -47,5 +47,3 @@ chezmoi_auto_apply: true
 # （facts 収集後に ansible_facts.env.HOME を使用）
 # zscaler_cert_path: "{{ lookup('env', 'HOME') | default('/home/ubuntu') }}/.certs/ZscalerRootCA.crt"
 # zscaler_ca_bundle_path: "{{ lookup('env', 'HOME') | default('/home/ubuntu') }}/.certs/ca-bundle.pem"
-# 証明書が存在する場合に true に設定される（実行時に自動判定）
-zscaler_enabled: false

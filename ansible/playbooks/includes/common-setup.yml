@@ -47,17 +47,10 @@
         - zscaler
         - certificates
 
-    - name: Zscaler有効フラグを設定
-      ansible.builtin.set_fact:
-        zscaler_enabled: "{{ zscaler_cert_stat.stat.exists | bool }}"
-      tags:
-        - zscaler
-        - certificates
-
     - name: Zscaler証明書の状態を表示
       ansible.builtin.debug:
         msg: |
-          Zscaler証明書: {{ 'あり' if zscaler_enabled else 'なし' }}
+          Zscaler証明書: {{ 'あり' if zscaler_cert_stat.stat.exists else 'なし' }}
           証明書パス: {{ zscaler_cert_path }}
           ※ 証明書のインストールはbootstrap.shで既に実施済みです
       tags:
