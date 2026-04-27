@@ -37,6 +37,8 @@
       - { name: eza, tags: ['eza', 'tools'] }
       - { name: dua_cli, tags: ['dua_cli', 'tools', 'disk'] }
       - { name: xh, tags: ['xh', 'tools', 'http'] }
+      - { name: zip, tags: ['zip', 'tools', 'archive'] }
+      - { name: unar, tags: ['unar', 'tools', 'archive'] }
       - { name: tmux, tags: ['tmux', 'tools'] }
       - { name: docker_install, tags: ['docker', 'docker_install'] }
       - { name: ssh, tags: ['ssh', 'security'] }

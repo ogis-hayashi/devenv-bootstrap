@@ -1,0 +1,49 @@
+---
+# ============================================================================
+# zip ロール - タスク定義
+# ============================================================================
+#
+# 目的:
+#   zip（ファイル圧縮ツール）をインストールします
+#
+# 前提条件:
+#   - Linuxbrew がインストール済みであること
+#
+# 参考:
+#   - zip: http://infozip.sourceforge.net/
+#
+
+- name: zip をインストール
+  community.general.homebrew:
+    name: zip
+    state: present
+    path: /home/linuxbrew/.linuxbrew/bin/brew
+  become: no
+  environment:
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_facts.env.PATH }}"
+    HOMEBREW_NO_VERIFY_ATTESTATIONS: "1"
+    HOMEBREW_CURL_RETRIES: "3"
+    CURL_CA_BUNDLE: "{{ zscaler_ca_bundle_path | default(omit) }}"
+
+- name: zip のバージョンを確認
+  ansible.builtin.command: /home/linuxbrew/.linuxbrew/bin/zip --version
+  register: zip_version
+  changed_when: false
+  failed_when: false
+  environment:
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_facts.env.PATH }}"
+  become: no
+
+- name: zip インストール完了メッセージ
+  ansible.builtin.debug:
+    msg: |
+      ================================================
+      zip のインストールが完了しました！
+      ================================================
+      バージョン: {{ zip_version.stdout_lines[1] | default('確認失敗') }}
+      使用方法:
+      # ファイルを圧縮
+      zip archive.zip file1 file2
+
+      # ディレクトリを再帰的に圧縮
+      zip -r archive.zip directory/

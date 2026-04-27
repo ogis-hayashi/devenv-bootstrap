@@ -1,0 +1,52 @@
+---
+# ============================================================================
+# unar ロール - タスク定義
+# ============================================================================
+#
+# 目的:
+#   unar（多機能解凍ツール）をインストールします
+#
+# 前提条件:
+#   - Linuxbrew がインストール済みであること
+#
+# 参考:
+#   - unar: https://theunarchiver.com/command-line
+#
+
+- name: unar をインストール
+  community.general.homebrew:
+    name: unar
+    state: present
+    path: /home/linuxbrew/.linuxbrew/bin/brew
+  become: no
+  environment:
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_facts.env.PATH }}"
+    HOMEBREW_NO_VERIFY_ATTESTATIONS: "1"
+    HOMEBREW_CURL_RETRIES: "3"
+    CURL_CA_BUNDLE: "{{ zscaler_ca_bundle_path | default(omit) }}"
+
+- name: unar のバージョンを確認
+  ansible.builtin.command: /home/linuxbrew/.linuxbrew/bin/unar --version
+  register: unar_version
+  changed_when: false
+  failed_when: false
+  environment:
+    PATH: "/home/linuxbrew/.linuxbrew/bin:{{ ansible_facts.env.PATH }}"
+  become: no
+
+- name: unar インストール完了メッセージ
+  ansible.builtin.debug:
+    msg: |
+      ================================================
+      unar のインストールが完了しました！
+      ================================================
+      バージョン: {{ unar_version.stdout | default('確認失敗') }}
+      使用方法:
+      # アーカイブを解凍
+      unar archive.zip
+
+      # 解凍先ディレクトリを指定
+      unar -o /path/to/destination archive.zip
+
+      # パスワード付きアーカイブを解凍
+      unar -p password archive.zip
