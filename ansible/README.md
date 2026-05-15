@@ -127,6 +127,27 @@ ansible-playbook -i inventories/wsl/hosts site.yml
 # chezmoi が自動的に dotfiles を初期化・適用します
 # （bootstrap playbook 内で自動実行されます）
 ```
+## 🛡️ trivy セキュリティスキャナの自動インストール
+
+共通セットアップで [trivy](https://github.com/aquasecurity/trivy) を Linuxbrew 経由で自動インストールします。
+
+### 特徴
+- Homebrew (Linuxbrew) を利用したべき等なインストール
+- すべての環境で自動的に trivy が利用可能
+- `community.general.homebrew` モジュールで安全に管理
+
+### 使い方
+特別な操作は不要です。`site.yml` または各種 bootstrap playbook を実行すると自動的に trivy がインストールされます。
+
+```sh
+ansible-playbook -i inventories/wsl/hosts site.yml
+```
+
+### 参考: 手動でtrivyをbrew経由でインストールする場合
+
+```sh
+brew install aquasecurity/trivy/trivy
+```
 
 chezmoiによって管理されるファイル:
 - `~/.bashrc`, `~/.zshrc` - シェル設定（Linuxbrew、starship初期化）
